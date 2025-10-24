@@ -1,0 +1,322 @@
+{
+    "project_name": "Nummo",
+    "goal": "Build and extend a peer-to-peer payment platform (like Venmo) with PHP (FlightPHP), MySQL (PDO), and a static SPA frontend (HTML/CSS/JS + Bootstrap). Android (Kotlin) client parity is planned.",
+    "repo_layout": {
+      "root": ".",
+      "backend": "backend",
+      "frontend": "frontend",
+      "sql": "sql",
+      "notes": [
+        "Backend will expose REST endpoints under /api/* via FlightPHP.",
+        "Use PDO for DB access (no ORMs).",
+        "JWT for auth; role-based (user, admin).",
+        "Keep controllers thin: routes→services→dao."
+      ]
+    },
+    "runtime_boot": {
+      "frontend_dev": "cd frontend && python3 -m http.server 8000",
+      "backend_dev": [
+        "cd backend",
+        "composer install",
+        "php -S localhost:8080"
+      ],
+      "db_import": "mysql -u <USER> -p <DBNAME> < sql/nummo_schema.sql"
+    },
+    "tech_stack": {
+      "backend": ["PHP 8.x", "FlightPHP", "Firebase PHP-JWT", "PDO"],
+      "frontend": ["HTML", "CSS", "Bootstrap", "Vanilla JS (fetch/AJAX)"],
+      "android": ["Kotlin", "Room (local cache)", "Retrofit (API)"],
+      "db": "MySQL/InnoDB"
+    },
+    "security": {
+      "auth": "JWT (HS256). Authorization: Bearer <token>",
+      "passwords": "BCrypt/Argon2ID hash",
+      "rbac_roles": ["user", "admin"],
+      "middleware": [
+        "request_json_validation",
+        "jwt_verify_and_attach_user",
+        "role_guard(role: 'admin'|'user')",
+        "error_handler (maps exceptions→HTTP codes)"
+      ]
+    },
+    "database": {
+      "name": "nummo",
+      "engine": "InnoDB",
+      "entities": {
+        "users": {
+          "columns": {
+            "id": "INT PK AUTO_INCREMENT",
+            "name": "VARCHAR(100) NOT NULL",
+            "email": "VARCHAR(190) NOT NULL UNIQUE",
+            "password": "VARCHAR(255) NOT NULL",
+            "role": "ENUM('user','admin') NOT NULL DEFAULT 'user'",
+            "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+          },
+          "indexes": ["UNIQUE(email)"]
+        },
+        "merchants": {
+          "columns": {
+            "id": "INT PK AUTO_INCREMENT",
+            "name": "VARCHAR(120) NOT NULL",
+            "category": "VARCHAR(80)",
+            "contact_email": "VARCHAR(190)",
+            "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+          }
+        },
+        "categories": {
+          "columns": {
+            "id": "INT PK AUTO_INCREMENT",
+            "name": "VARCHAR(60) NOT NULL UNIQUE"
+          }
+        },
+        "contacts": {
+          "columns": {
+            "id": "INT PK AUTO_INCREMENT",
+            "user_id": "INT NOT NULL",
+            "friend_user_id": "INT NOT NULL",
+            "status": "ENUM('pending','accepted','blocked') NOT NULL DEFAULT 'pending'",
+            "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+          },
+          "fks": [
+            "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+            "FOREIGN KEY (friend_user_id) REFERENCES users(id) ON DELETE CASCADE"
+          ],
+          "unique": ["UNIQUE(user_id, friend_user_id)"]
+        },
+        "transactions": {
+          "columns": {
+            "id": "INT PK AUTO_INCREMENT",
+            "sender_id": "INT NOT NULL",
+            "receiver_id": "INT NOT NULL",
+            "merchant_id": "INT NULL",
+            "category_id": "INT NULL",
+            "amount": "DECIMAL(10,2) NOT NULL CHECK (amount > 0)",
+            "note": "VARCHAR(255) NULL",
+            "status": "ENUM('pending','completed','cancelled') NOT NULL DEFAULT 'pending'",
+            "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+          },
+          "fks": [
+            "FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE",
+            "FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE",
+            "FOREIGN KEY (merchant_id) REFERENCES merchants(id) ON DELETE SET NULL",
+            "FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL"
+          ],
+          "indexes": ["INDEX(sender_id)", "INDEX(receiver_id)", "INDEX(created_at)"]
+        }
+      },
+      "seed_examples": {
+        "users": [
+          {"name":"Alice","email":"alice@example.com","password":"<hash>","role":"user"},
+          {"name":"Bob","email":"bob@example.com","password":"<hash>","role":"user"},
+          {"name":"Admin","email":"admin@example.com","password":"<hash>","role":"admin"}
+        ],
+        "categories": ["Food","Transport","Bills","Entertainment"]
+      }
+    },
+    "backend_conventions": {
+      "namespaces": {
+        "dao": "backend/dao",
+        "services": "backend/services",
+        "routes": "backend/routes",
+        "config": "backend/config",
+        "api": "backend/api"
+      },
+      "files": {
+        "config": ["config/Database.php", "config/env.example.php"],
+        "jwt_secret": "config/jwt.php"
+      },
+      "controller_style": "Stateless functions calling Services; Services call DAOs; DAOs return arrays/DTOs; Exceptions bubble to error handler."
+    },
+    "routes": [
+      {
+        "group": "/api/auth",
+        "endpoints": [
+          {
+            "method": "POST",
+            "path": "/register",
+            "body": {"name":"string","email":"email","password":"string(min 8)"},
+            "logic": [
+              "validate unique email",
+              "hash password",
+              "insert user",
+              "issue JWT on success"
+            ],
+            "responses": {"201":"{user, token}","409":"email exists","400":"invalid"}
+          },
+          {
+            "method": "POST",
+            "path": "/login",
+            "body": {"email":"email","password":"string"},
+            "logic": ["verify credentials", "issue JWT with role + user_id"],
+            "responses": {"200":"{user, token}","401":"invalid creds"}
+          }
+        ]
+      },
+      {
+        "group": "/api/users",
+        "middleware": ["auth_required"],
+        "endpoints": [
+          {"method":"GET","path":"/me","logic":["return current user profile"]},
+          {
+            "method":"PATCH",
+            "path":"/me",
+            "body":{"name?":"string"},
+            "logic":["update allowed fields for current user"]
+          },
+          {
+            "method":"GET",
+            "path":"/:id",
+            "middleware":["role_guard('admin')"],
+            "logic":["get any user by id"]
+          }
+        ]
+      },
+      {
+        "group": "/api/contacts",
+        "middleware": ["auth_required"],
+        "endpoints": [
+          {"method":"GET","path":"/","logic":["list my contacts (accepted)"]},
+          {"method":"POST","path":"/","body":{"friend_user_id":"int"},"logic":["send request or accept if reciprocal pending"]},
+          {"method":"PATCH","path":"/:id","body":{"status":"accepted|blocked"},"logic":["update status (owner only)"]},
+          {"method":"DELETE","path":"/:id","logic":["remove contact (soft or hard delete)"]}
+        ]
+      },
+      {
+        "group": "/api/transactions",
+        "middleware": ["auth_required"],
+        "endpoints": [
+          {
+            "method":"GET",
+            "path":"/",
+            "query":{"limit?":"int","offset?":"int","status?":"enum","since?":"ISO8601"},
+            "logic":["list my tx: where sender_id=current OR receiver_id=current; order by created_at DESC"]
+          },
+          {
+            "method":"POST",
+            "path":"/",
+            "body":{"receiver_id":"int","amount":"decimal(>0)","note?":"string","category_id?":"int","merchant_id?":"int"},
+            "logic":[
+              "validate receiver exists and != sender",
+              "create tx with status=pending",
+              "immediately mark completed (demo) OR require future settlement hook"
+            ],
+            "responses":{"201":"created tx","400":"invalid input","404":"receiver not found"}
+          },
+          {
+            "method":"GET",
+            "path":"/:id",
+            "logic":["authorize (sender or receiver or admin)","return tx"]
+          },
+          {
+            "method":"PATCH",
+            "path":"/:id",
+            "body":{"status":"cancelled|completed"},
+            "logic":["only sender can cancel pending; admin can override"]
+          }
+        ]
+      },
+      {
+        "group": "/api/merchants",
+        "middleware": ["auth_required"],
+        "endpoints": [
+          {"method":"GET","path":"/","logic":["list merchants"]},
+          {"method":"POST","path":"/","middleware":["role_guard('admin')"],"body":{"name":"string","category?":"string","contact_email?":"email"}}
+        ]
+      },
+      {
+        "group": "/api/categories",
+        "middleware": ["auth_required"],
+        "endpoints": [
+          {"method":"GET","path":"/","logic":["list categories"]},
+          {"method":"POST","path":"/","middleware":["role_guard('admin')"],"body":{"name":"string"}}
+        ]
+      }
+    ],
+    "dao_layer": {
+      "pattern": "Each DAO gets a PDO via Database::getConnection(). Use prepared statements everywhere. Return associative arrays; throw DomainExceptions on not found.",
+      "files": [
+        "dao/UserDao.php",
+        "dao/TransactionDao.php",
+        "dao/ContactDao.php",
+        "dao/CategoryDao.php",
+        "dao/MerchantDao.php"
+      ]
+    },
+    "services_layer": {
+      "pattern": "Business rules (validation, permissions, joins). No SQL here.",
+      "files": [
+        "services/AuthService.php",
+        "services/UserService.php",
+        "services/TransactionService.php",
+        "services/ContactService.php",
+        "services/LookupService.php"
+      ]
+    },
+    "routes_layer": {
+      "pattern": "Flight::route definitions; bind JSON bodies to DTOs; catch exceptions to error handler.",
+      "example": "Flight::route('POST /api/transactions', ['TransactionController','create']);"
+    },
+    "openapi": {
+      "file": "docs/swagger.json",
+      "serve_ui": "docs/swagger-ui (static)",
+      "tags": ["Auth","Users","Contacts","Transactions","Merchants","Categories"]
+    },
+    "frontend_spa": {
+      "pages": ["login.html","dashboard.html","profile.html","transactions.html","contacts.html"],
+      "nav": "client-side via hash routing",
+      "api_base": "http://localhost:8080/api",
+      "auth_storage": "localStorage.token",
+      "fetch_examples": [
+        {
+          "name": "Login",
+          "code": "fetch(`${API}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email, password})}).then(r=>r.json()).then(d=>{localStorage.token=d.token; location.hash='#/dashboard';})"
+        },
+        {
+          "name": "List transactions",
+          "code": "fetch(`${API}/transactions`,{headers:{'Authorization':`Bearer ${localStorage.token}`}}).then(r=>r.json())"
+        }
+      ]
+    },
+    "android_parity": {
+      "entities": ["Transaction","User","Contact"],
+      "mvvm": "ViewModel + Repository(Room+Retrofit) + DAO",
+      "room_sample": {
+        "Transaction": {
+          "id":"Int @PrimaryKey(autoGenerate=true)",
+          "sender_id":"Int",
+          "receiver_id":"Int",
+          "amount":"Double",
+          "note":"String?",
+          "status":"String",
+          "created_at":"String"
+        }
+      }
+    },
+    "testing": {
+      "postman": "Collection under docs/postman_collection.json",
+      "smoke_curl": [
+        "curl -X POST http://localhost:8080/api/auth/register -H 'Content-Type: application/json' -d '{\"name\":\"Test\",\"email\":\"test@example.com\",\"password\":\"Secret123!\"}'",
+        "curl -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\",\"password\":\"Secret123!\"}'"
+      ]
+    },
+    "error_model": {
+      "shape": {"error":"string","code":"string","details":"object?"},
+      "http_map": {
+        "ValidationError": 400,
+        "AuthError": 401,
+        "Forbidden": 403,
+        "NotFound": 404,
+        "Conflict": 409,
+        "ServerError": 500
+      }
+    },
+    "acceptance_criteria": [
+      "All routes implemented with JWT guards where required.",
+      "CRUD for 5 entities; FK integrity; ON DELETE rules enforced.",
+      "OpenAPI doc covers every route with schemas & examples.",
+      "Frontend can login, list/create transactions, add contacts.",
+      "Admin can create categories/merchants.",
+      "Basic seed data works end-to-end."
+    ]
+  }
+  

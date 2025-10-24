@@ -1,16 +1,76 @@
-<h1>Register</h1>
-<form id="register-form">
-  <div class="mb-3">
-    <label for="reg-name" class="form-label">Name</label>
-    <input type="text" class="form-control" id="reg-name" placeholder="Your Name" required>
+<!-- =========================================================
+     NUMMO APP — REGISTER VIEW
+     Clean, modern registration form
+========================================================= -->
+
+<section class="d-flex align-items-center justify-content-center vh-100 fade-in">
+  <div class="card shadow-lg p-4" style="max-width: 450px; width: 100%;">
+    <div class="text-center mb-4">
+      <h2 class="fw-bold text-primary">Create Your Nummo Account 💳</h2>
+      <p class="text-muted mb-0">Join our secure P2P payment network</p>
+    </div>
+
+    <form id="register-form" autocomplete="off">
+      <!-- Name -->
+      <div class="mb-3">
+        <label for="reg-name" class="form-label fw-semibold">Full Name</label>
+        <input 
+          type="text" 
+          class="form-control" 
+          id="reg-name" 
+          placeholder="Your Name" 
+          required>
+      </div>
+
+      <!-- Email -->
+      <div class="mb-3">
+        <label for="reg-email" class="form-label fw-semibold">Email</label>
+        <input 
+          type="email" 
+          class="form-control" 
+          id="reg-email" 
+          placeholder="you@example.com" 
+          required>
+      </div>
+
+      <!-- Password -->
+      <div class="mb-3">
+        <label for="reg-password" class="form-label fw-semibold">Password</label>
+        <input 
+          type="password" 
+          class="form-control" 
+          id="reg-password" 
+          placeholder="••••••••" 
+          required>
+        <div class="form-text text-muted small">
+          Use at least 8 characters with numbers and symbols.
+        </div>
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="mb-3">
+        <label for="reg-confirm" class="form-label fw-semibold">Confirm Password</label>
+        <input 
+          type="password" 
+          class="form-control" 
+          id="reg-confirm" 
+          placeholder="Repeat Password" 
+          required>
+      </div>
+
+      <!-- Submit -->
+      <div class="d-grid">
+        <button type="submit" class="btn btn-success py-2 fw-semibold">
+          Create Account
+        </button>
+      </div>
+    </form>
+
+    <div class="text-center mt-4">
+      <p class="small text-muted mb-0">
+        Already have an account?
+        <a href="#login" class="text-primary fw-semibold text-decoration-none">Login</a>
+      </p>
+    </div>
   </div>
-  <div class="mb-3">
-    <label for="reg-email" class="form-label">Email</label>
-    <input type="email" class="form-control" id="reg-email" placeholder="you@example.com" required>
-  </div>
-  <div class="mb-3">
-    <label for="reg-password" class="form-label">Password</label>
-    <input type="password" class="form-control" id="reg-password" placeholder="Password" required>
-  </div>
-  <button type="submit" class="btn btn-success">Register</button>
-</form>
+</section>

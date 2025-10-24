@@ -1,36 +1,89 @@
-<h1 class="mb-4">Dashboard</h1>
-<p>Welcome to your dashboard! 🧭</p>
+<!-- =========================================================
+     NUMMO APP — DASHBOARD VIEW
+     Displays account summary, balances, and expense chart
+========================================================= -->
 
-<div class="row mb-4">
-  <div class="col-md-4">
-    <div class="card text-white bg-primary mb-3">
-      <div class="card-body">
-        <h5 class="card-title">Balance</h5>
-        <h3 class="card-text fs-4" id="balance">0.00</h3>
-      </div>
-    </div>
+<section class="fade-in">
+  <div id="page-header" class="py-4 text-center text-white rounded mb-4" 
+       style="background: linear-gradient(135deg, #007bff 0%, #00b4d8 100%);">
+    <h1 id="page-title" class="fw-bold mb-0">Dashboard</h1>
+    <p class="mt-2">Welcome back to your account overview 🧭</p>
   </div>
-  <div class="col-md-4">
-    <div class="card text-white bg-success mb-3">
-      <div class="card-body">
-        <h5 class="card-title">Income</h5>
-        <h3 class="card-text fs-4" id="income">0.00</h3>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card text-white bg-danger mb-3">
-      <div class="card-body">
-        <h5 class="card-title">Expenses</h5>
-        <h3 class="card-text fs-4" id="expenses">0.00</h3>
-      </div>
-    </div>
-  </div>
-</div>
 
-<div class="card">
-  <div class="card-body">
-    <h5 class="card-title">Transactions Chart</h5>
-    <canvas id="transactionsChart" height="150"></canvas>
+  <!-- Summary Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card text-white bg-primary shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="card-title text-uppercase">Balance</h6>
+          <h3 id="balance" class="fw-semibold fs-3 mt-2">$0.00</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card text-white bg-success shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="card-title text-uppercase">Income</h6>
+          <h3 id="income" class="fw-semibold fs-3 mt-2">$0.00</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card text-white bg-danger shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="card-title text-uppercase">Expenses</h6>
+          <h3 id="expenses" class="fw-semibold fs-3 mt-2">$0.00</h3>
+        </div>
+      </div>
+    </div>
   </div>
-</div>
+
+  <!-- Chart Card -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="card-title mb-0">Spending Overview</h5>
+        <small class="text-muted">Last 30 days</small>
+      </div>
+      <canvas id="transactionsChart" height="150"></canvas>
+    </div>
+  </div>
+
+  <!-- Recent Transactions Table -->
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="card-title mb-0">Recent Transactions</h5>
+        <a href="#transactions" class="btn btn-outline-primary btn-sm">View All</a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Amount</th>
+              <th>Category</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="recent-transactions">
+            <!-- Will be dynamically filled -->
+            <tr>
+              <td colspan="6" class="text-center text-muted py-3">Loading data...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-5 text-center text-muted">
+    <p class="small mb-0">© 2025 Nummo. All rights reserved.</p>
+  </footer>
+</section>
