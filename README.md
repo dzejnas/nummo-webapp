@@ -1,18 +1,75 @@
-        # Nummo - Milestone 1 Starter
+# 💳 Nummo — Peer-to-Peer Payment App (Milestone 2)
 
-        This is a scaffold for the Nummo project (Milestone 1). The frontend is static and works as an SPA. The backend contains FlightPHP stubs and a PDO-based DAO example.
+Nummo is a **mock peer-to-peer payment platform** inspired by Venmo, built as part of the Web Programming course.  
+The project is structured as a **single-page web application (SPA)** with a PHP + MySQL backend and a modern frontend.
 
-## Quick local run
-1. Serve frontend:
-   cd frontend
-   python3 -m http.server 8000
+This version completes **Milestone 2**, which focuses on database setup and the DAO (Data Access Object) layer.
 
-2. Install backend deps and run (when ready):
-   cd backend
-   composer install
-   php -S localhost:8080
+---
 
-3. Import SQL:
-   mysql -u root -p < ../sql/nummo_schema.sql
-   
-   ![Database ERD](docs/erd.png)
+## 🚀 Features Implemented (Milestone 2)
+
+✅ **Database Schema**  
+- Created `nummo_db` with fully normalized tables:  
+  `users`, `contacts`, `transactions`, `categories`, `merchants`.  
+- Includes relationships (FK constraints) and demo data.
+
+✅ **DAO Layer (PHP + PDO)**  
+- Implemented secure CRUD operations for all major entities.  
+- Verified with `dao_test.php` using prepared statements.  
+- Tested connection and queries via `Database.php`.
+
+✅ **Frontend SPA**  
+- Static single-page architecture using Bootstrap 5.  
+- Router-based navigation (Dashboard / Transactions / Profile / Login / Register).  
+- Live dashboard mockup with transaction summary and Chart.js integration.  
+- Clean, responsive UI.
+
+✅ **Code Structure**
+nummo-webapp/
+│
+├── backend/
+│ ├── config/Database.php
+│ ├── dao/
+│ │ ├── UserDao.php
+│ │ ├── TransactionDao.php
+│ │ ├── MerchantDao.php
+│ │ ├── ContactDao.php
+│ │ └── CategoryDao.php
+│ └── test/dao_test.php
+│
+├── frontend/
+│ ├── assets/
+│ │ ├── css/style.css
+│ │ └── js/
+│ │ ├── router.js
+│ │ ├── dashboard.js
+│ │ └── transactions.js
+│ └── index.html
+│
+└── sql/nummo_schema.sql
+
+---
+
+## 🧩 Quick Local Run
+
+### 1️⃣ Run the frontend
+```bash
+cd frontend
+python3 -m http.server 8000
+Visit → http://localhost:8000
+
+2️⃣ Run the backend (when needed)
+cd backend
+composer install
+php -S localhost:8080
+
+3️⃣ Import the database
+mysql -u root -p < sql/nummo_schema.sql
+
+
+👩‍💻 Author
+
+Dzejna Sejfic
+Burch International University – IT Department
+“Built with ❤️ and PHP.”
