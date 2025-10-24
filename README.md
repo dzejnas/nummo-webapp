@@ -67,9 +67,13 @@ php -S localhost:8080
 3️⃣ Import the database
 mysql -u root -p < sql/nummo_schema.sql
 
+## 🧩 Database Diagram
+
+![Nummo Database ERD](./image.png)
 
 👩‍💻 Author
 
 Dzejna Sejfic
 Burch International University – IT Department
 “Built with ❤️ and PHP.”
+
