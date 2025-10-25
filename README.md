@@ -71,6 +71,21 @@ mysql -u root -p < sql/nummo_schema.sql
 
 ![Nummo Database ERD](./image.png)
 
+## 🚀 Milestone 3 — Live API, Filters & Transaction Creation
+
+**New Features**
+- Live backend integration with FlightPHP and MySQL  
+- Transaction filters by status and category  
+- Add Transaction form with POST API  
+- Real-time data rendering with Bootstrap styling  
+- Backend modularized (DAO, routes, config, public entry point)
+
+**Next Steps**
+- Implement authentication  
+- Add transaction editing and deletion  
+- Display user balances dynamically  
+
+
 👩‍💻 Author
 
 Dzejna Sejfic
