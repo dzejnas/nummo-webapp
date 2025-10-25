@@ -97,3 +97,4 @@ function renderChart() {
     }
   });
 }
+//window.renderTransactions = renderTransactions;

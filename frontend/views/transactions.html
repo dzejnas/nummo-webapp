@@ -50,6 +50,47 @@
       </form>
     </div>
   </div>
+  
+  <!-- ============================= -->
+<!-- Add Transaction Form          -->
+<!-- ============================= -->
+<div class="card shadow-sm mb-4 p-4">
+  <h5 class="mb-3 text-primary">
+    <i class="bi bi-plus-circle"></i> Add Transaction
+  </h5>
+  <form id="add-transaction-form" class="row g-3">
+    <div class="col-md-6">
+      <label for="receiver_id" class="form-label">Receiver ID</label>
+      <input type="number" class="form-control" id="receiver_id" placeholder="Enter receiver ID" required />
+    </div>
+    <div class="col-md-6">
+      <label for="amount" class="form-label">Amount ($)</label>
+      <input type="number" class="form-control" id="amount" placeholder="Enter amount" required step="0.01" />
+    </div>
+
+    <div class="col-md-6">
+      <label for="category" class="form-label">Category</label>
+      <select id="category" class="form-select">
+        <option value="1">Food</option>
+        <option value="2">Transport</option>
+        <option value="3">Shopping</option>
+        <option value="4">Entertainment</option>
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label for="note" class="form-label">Note</label>
+      <input type="text" class="form-control" id="note" placeholder="Optional note" />
+    </div>
+
+    <div class="col-12 text-end">
+      <button type="submit" class="btn btn-success">
+        <i class="bi bi-send"></i> Send Money
+      </button>
+    </div>
+  </form>
+</div>
+
 
   <!-- Transactions Table -->
   <div class="card shadow-sm border-0 rounded-4">
