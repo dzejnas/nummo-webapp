@@ -1,0 +1,16 @@
+# Environment and secrets
+.env
+*.env
+
+# OS and editor files
+.DS_Store
+.vscode/
+.idea/
+
+# Logs and cache
+*.log
+cache/
+tmp/
+
+# Composer dependencies (if you don’t want vendor in Git)
+vendor/
