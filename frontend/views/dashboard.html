@@ -4,7 +4,9 @@
 ========================================================= -->
 
 <section class="fade-in">
-  <div id="page-header" class="py-4 text-center text-white rounded mb-4" 
+  <!-- Header -->
+  <div id="page-header" 
+       class="py-4 text-center text-white rounded mb-4" 
        style="background: linear-gradient(135deg, #007bff 0%, #00b4d8 100%);">
     <h1 id="page-title" class="fw-bold mb-0">Dashboard</h1>
     <p class="mt-2">Welcome back to your account overview 🧭</p>
@@ -13,7 +15,7 @@
   <!-- Summary Cards -->
   <div class="row g-3 mb-4">
     <div class="col-md-4">
-      <div class="card text-white bg-primary shadow-sm h-100">
+      <div class="card text-white bg-primary shadow-sm h-100 balance-card animate-card">
         <div class="card-body">
           <h6 class="card-title text-uppercase">Balance</h6>
           <h3 id="balance" class="fw-semibold fs-3 mt-2">$0.00</h3>
@@ -22,7 +24,7 @@
     </div>
 
     <div class="col-md-4">
-      <div class="card text-white bg-success shadow-sm h-100">
+      <div class="card text-white bg-success shadow-sm h-100 income-card animate-card">
         <div class="card-body">
           <h6 class="card-title text-uppercase">Income</h6>
           <h3 id="income" class="fw-semibold fs-3 mt-2">$0.00</h3>
@@ -31,7 +33,7 @@
     </div>
 
     <div class="col-md-4">
-      <div class="card text-white bg-danger shadow-sm h-100">
+      <div class="card text-white bg-danger shadow-sm h-100 expense-card animate-card">
         <div class="card-body">
           <h6 class="card-title text-uppercase">Expenses</h6>
           <h3 id="expenses" class="fw-semibold fs-3 mt-2">$0.00</h3>
@@ -45,11 +47,33 @@
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="card-title mb-0">Spending Overview</h5>
-        <small class="text-muted">Last 30 days</small>
+        <div>
+          <small class="text-muted me-3">Last 30 days</small>
+          <button id="refresh-dashboard" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+          </button>
+        </div>
       </div>
       <canvas id="transactionsChart" height="150"></canvas>
     </div>
   </div>
+  
+<!-- AI Insight Card -->
+<div class="card shadow-sm mb-4 border-0" id="ai-insight-card" style="
+     background: linear-gradient(135deg, #007bff 0%, #00c6ff 100%);
+     color: white;
+     border-radius: 16px;
+     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+     transition: 0.4s ease-in-out;">
+  <div class="card-body">
+    <h5 class="fw-semibold mb-2">
+      <i class="bi bi-stars"></i> Nummo AI Insight
+    </h5>
+    <p id="ai-insight-text" class="mb-0 opacity-90">
+      🤖 Analyzing your spending habits...
+    </p>
+  </div>
+</div>
 
   <!-- Recent Transactions Table -->
   <div class="card shadow-sm">
@@ -87,3 +111,31 @@
     <p class="small mb-0">© 2025 Nummo. All rights reserved.</p>
   </footer>
 </section>
+
+<!-- =========================================================
+     Inline Animation Styles for Dashboard Cards
+========================================================= -->
+<style>
+  .animate-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .animate-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  }
+
+  #refresh-dashboard:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  /* Optional: pulse animation for refresh */
+  .pulse {
+    animation: pulseGlow 0.6s ease;
+  }
+  @keyframes pulseGlow {
+    0% { transform: scale(1); box-shadow: 0 0 0 rgba(0, 0, 0, 0.2); }
+    50% { transform: scale(1.03); box-shadow: 0 0 10px rgba(0, 123, 255, 0.4); }
+    100% { transform: scale(1); box-shadow: none; }
+  }
+</style>
