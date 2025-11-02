@@ -1,11 +1,9 @@
 <?php
-require_once __DIR__ . '/../config/Database.php';
+require_once __DIR__ . '/BaseDao.php';
 
-class TransactionDao {
-    private \PDO $db;
-
+class TransactionDao extends BaseDao {
     public function __construct() {
-        $this->db = Database::getConnection();
+        parent::__construct('transactions');
     }
 
     // ====================================================
@@ -17,7 +15,7 @@ class TransactionDao {
                     t.amount, t.note, t.status, t.created_at,
                     s.name AS sender_name, r.name AS receiver_name,
                     m.name AS merchant_name, c.name AS category_name
-                FROM transactions t
+                FROM {$this->table} t
                 JOIN users s ON s.id = t.sender_id
                 JOIN users r ON r.id = t.receiver_id
                 LEFT JOIN merchants m ON m.id = t.merchant_id
@@ -37,7 +35,6 @@ class TransactionDao {
         $sql .= " ORDER BY t.created_at DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->db->prepare($sql);
 
-        // Bind safely
         $stmt->bindValue(':sender_uid', $userId, PDO::PARAM_INT);
         $stmt->bindValue(':receiver_uid', $userId, PDO::PARAM_INT);
         if (!empty($status)) $stmt->bindValue(':status', $status);
@@ -49,51 +46,10 @@ class TransactionDao {
     }
 
     // ====================================================
-    // 🔹 Get all transactions (for admin/testing)
-    // ====================================================
-    public function getAll(): array {
-        $stmt = $this->db->query("
-            SELECT 
-                t.id, t.sender_id, t.receiver_id, t.merchant_id, t.category_id,
-                t.amount, t.note, t.status, t.created_at,
-                s.name AS sender_name, r.name AS receiver_name,
-                m.name AS merchant_name, c.name AS category_name
-            FROM transactions t
-            JOIN users s ON s.id = t.sender_id
-            JOIN users r ON r.id = t.receiver_id
-            LEFT JOIN merchants m ON m.id = t.merchant_id
-            LEFT JOIN categories c ON c.id = t.category_id
-            ORDER BY t.created_at DESC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    // ====================================================
-    // 🔹 Get one transaction by ID
-    // ====================================================
-    public function getById(int $id): ?array {
-        $stmt = $this->db->prepare("
-            SELECT 
-                t.id, t.sender_id, t.receiver_id, t.merchant_id, t.category_id,
-                t.amount, t.note, t.status, t.created_at,
-                s.name AS sender_name, r.name AS receiver_name,
-                m.name AS merchant_name, c.name AS category_name
-            FROM transactions t
-            JOIN users s ON s.id = t.sender_id
-            JOIN users r ON r.id = t.receiver_id
-            LEFT JOIN merchants m ON m.id = t.merchant_id
-            LEFT JOIN categories c ON c.id = t.category_id
-            WHERE t.id = :id
-        ");
-        $stmt->execute(['id' => $id]);
-        return $stmt->fetch() ?: null;
-    }
-
-    // ====================================================
     // 🔹 Create a new transaction
     // ====================================================
     public function create(array $data): int {
-        $sql = "INSERT INTO transactions 
+        $sql = "INSERT INTO {$this->table} 
                     (sender_id, receiver_id, merchant_id, category_id, amount, note, status)
                 VALUES 
                     (:sender_id, :receiver_id, :merchant_id, :category_id, :amount, :note, :status)";
@@ -116,29 +72,23 @@ class TransactionDao {
     public function update(int $id, array $data): bool {
         $fields = [];
         $params = ['id' => $id];
+
         foreach (['sender_id','receiver_id','merchant_id','category_id','amount','note','status'] as $col) {
             if (array_key_exists($col, $data)) {
                 $fields[] = "$col = :$col";
                 $params[$col] = $data[$col];
             }
         }
+
         if (!$fields) return false;
 
-        $sql = "UPDATE transactions SET " . implode(', ', $fields) . " WHERE id = :id";
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $fields) . " WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
     }
 
     // ====================================================
-    // 🔹 Delete a transaction
-    // ====================================================
-    public function delete(int $id): bool {
-        $stmt = $this->db->prepare("DELETE FROM transactions WHERE id = :id");
-        return $stmt->execute(['id' => $id]);
-    }
-
-    // ====================================================
-    // 🔹 Fetch all transactions (global filter support)
+    // 🔹 Filtered queries (Admin or User)
     // ====================================================
     public function getAllFiltered(?string $status = null, ?string $category = null): array {
         $sql = "SELECT 
@@ -146,7 +96,7 @@ class TransactionDao {
                     t.amount, t.note, t.status, t.created_at,
                     s.name AS sender_name, r.name AS receiver_name,
                     m.name AS merchant_name, c.name AS category_name
-                FROM transactions t
+                FROM {$this->table} t
                 JOIN users s ON s.id = t.sender_id
                 JOIN users r ON r.id = t.receiver_id
                 LEFT JOIN merchants m ON m.id = t.merchant_id
@@ -154,12 +104,10 @@ class TransactionDao {
                 WHERE 1=1";
 
         $params = [];
-
         if (!empty($status) && $status !== 'All') {
             $sql .= " AND t.status = :status";
             $params['status'] = $status;
         }
-
         if (!empty($category) && $category !== 'All') {
             $sql .= " AND c.name = :category";
             $params['category'] = $category;
@@ -171,53 +119,42 @@ class TransactionDao {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // ====================================================
-    // 🔹 Fetch transactions for a specific user with filters
-    // ====================================================
     public function getAllForUserFiltered(int $userId, ?string $status = null, ?string $category = null): array {
         $sql = "SELECT 
                     t.id, t.sender_id, t.receiver_id, t.merchant_id, t.category_id,
                     t.amount, t.note, t.status, t.created_at,
                     s.name AS sender_name, r.name AS receiver_name,
                     m.name AS merchant_name, c.name AS category_name
-                FROM transactions t
+                FROM {$this->table} t
                 JOIN users s ON s.id = t.sender_id
                 JOIN users r ON r.id = t.receiver_id
                 LEFT JOIN merchants m ON m.id = t.merchant_id
                 LEFT JOIN categories c ON c.id = t.category_id
                 WHERE (t.sender_id = :sender_uid OR t.receiver_id = :receiver_uid)";
     
-        // ✅ Use separate placeholders for clarity
         $params = [
             ':sender_uid' => $userId,
             ':receiver_uid' => $userId
         ];
     
-        // only add filters if they’re real values
         if (!empty($status) && $status !== 'All') {
             $sql .= " AND t.status = :status";
             $params[':status'] = $status;
         }
-    
         if (!empty($category) && $category !== 'All') {
             $sql .= " AND c.name = :category";
             $params[':category'] = $category;
         }
-    
+
         $sql .= " ORDER BY t.created_at DESC";
-    
         $stmt = $this->db->prepare($sql);
-    
-        // ✅ Bind only what actually exists
+
         foreach ($params as $key => $val) {
-            if (strpos($sql, $key) !== false) {
-                $stmt->bindValue($key, $val, is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
-            }
+            $stmt->bindValue($key, $val, is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
         }
-    
+
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
 }
 ?>

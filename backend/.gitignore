@@ -12,5 +12,5 @@
 cache/
 tmp/
 
-# Composer dependencies (if you don’t want vendor in Git)
+# Composer dependencies (we don't vendor in Git)
 vendor/
