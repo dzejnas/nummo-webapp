@@ -1,150 +1,231 @@
+/* =========================================================
+   NUMMO APP — GLOBAL STYLES
+   Refined for SPA, smooth transitions, and dark mode.
+========================================================= */
+
 /* ------------------------------
-   GENERAL APP STYLES
+   BASE & GLOBAL
 ------------------------------ */
 
 body {
-    background-color: #f8fafc; /* soft gray */
-    font-family: "Inter", "Segoe UI", Roboto, sans-serif;
-    color: #333;
-    padding-top: 70px;
-  }
-  
-  /* Smooth section transitions */
-  .app-view, #app {
-    transition: opacity 0.3s ease-in-out;
-  }
-  
-  /* ------------------------------
-     NAVBAR
-  ------------------------------ */
-  
-  .navbar {
-    background-color: #ffffff !important;
-    border-bottom: 1px solid #e5e7eb;
-  }
-  
-  .navbar-brand {
-    font-weight: 700;
-    color: #007bff !important;
-    letter-spacing: 0.5px;
-  }
-  
-  .navbar-nav .nav-link {
-    color: #555 !important;
-    font-weight: 500;
-    margin: 0 6px;
-    border-radius: 6px;
-    transition: background-color 0.3s, color 0.3s;
-  }
-  
-  .navbar-nav .nav-link:hover,
-  .navbar-nav .nav-link.active {
-    background-color: #007bff !important;
-    color: #fff !important;
-  }
-  
-  /* ------------------------------
-     CARDS & DASHBOARD
-  ------------------------------ */
-  
-  .card {
-    border: none;
-    border-radius: 1rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  }
-  
-  .card-title {
-    font-weight: 600;
-  }
-  
-  .bg-primary, .bg-success, .bg-danger {
-    background-image: linear-gradient(135deg, #007bff 0%, #0056d6 100%);
-  }
-  
-  /* Different color gradients */
-  .bg-success {
-    background-image: linear-gradient(135deg, #28a745 0%, #1e8e3e 100%);
-  }
-  
-  .bg-danger {
-    background-image: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
-  }
-  
-  /* ------------------------------
-     BUTTONS
-  ------------------------------ */
-  
-  .btn-primary {
-    background-color: #007bff;
-    border: none;
-    border-radius: 0.5rem;
-    transition: 0.3s;
-  }
-  
-  .btn-primary:hover {
-    background-color: #0056d6;
-  }
-  
-  /* ------------------------------
-     TABLES (Transactions)
-  ------------------------------ */
-  
-  .table {
-    background-color: white;
-    border-radius: 0.75rem;
-    overflow: hidden;
-  }
-  
-  .table th {
-    background-color: #f1f5f9;
-    color: #555;
-  }
-  
-  .table td {
-    vertical-align: middle;
-  }
-  
-  /* ------------------------------
-     FOOTER
-  ------------------------------ */
-  
-  footer {
-    text-align: center;
-    padding: 2rem 0;
-    color: #888;
-    font-size: 0.9rem;
-  }
-  
-  /* ------------------------------
+  background-color: #f8fafc; /* soft gray */
+  font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+  color: #333;
+  padding-top: 70px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.app-view, #app {
+  transition: opacity 0.3s ease-in-out;
+}
+
+a {
+  text-decoration: none;
+}
+
+/* Smooth fade between view changes */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ------------------------------
+   NAVBAR
+------------------------------ */
+
+.navbar {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  color: #007bff !important;
+  letter-spacing: 0.5px;
+}
+
+.navbar-nav .nav-link {
+  color: #555 !important;
+  font-weight: 500;
+  margin: 0 6px;
+  border-radius: 6px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link.active {
+  background-color: #007bff !important;
+  color: #fff !important;
+}
+
+/* ------------------------------
+   DASHBOARD CARDS
+------------------------------ */
+
+.card {
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+}
+
+.card-title {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.bg-primary, .bg-success, .bg-danger {
+  background-image: linear-gradient(135deg, #007bff 0%, #0056d6 100%);
+}
+
+.bg-success {
+  background-image: linear-gradient(135deg, #28a745 0%, #1e8e3e 100%);
+}
+
+.bg-danger {
+  background-image: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
+}
+
+/* ------------------------------
+   BUTTONS
+------------------------------ */
+
+.btn-primary {
+  background-color: #007bff;
+  border: none;
+  border-radius: 0.5rem;
+  transition: 0.3s;
+}
+
+.btn-primary:hover {
+  background-color: #0056d6;
+}
+
+/* ------------------------------
+   TABLES (Transactions)
+------------------------------ */
+
+.table {
+  background-color: white;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.table th {
+  background-color: #f1f5f9;
+  color: #555;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: #f9fafb;
+}
+
+/* ------------------------------
+   FOOTER
+------------------------------ */
+
+footer {
+  text-align: center;
+  padding: 2rem 0;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+/* ------------------------------
    PAGE HEADER
 ------------------------------ */
 
 #page-header {
-    background: linear-gradient(135deg, #007bff 0%, #00b4d8 100%);
-    border-bottom: 1px solid #e5e7eb;
-    margin-bottom: 1rem;
-    transition: background 0.5s ease-in-out, opacity 0.3s;
-  }
-  
-  #page-header.fade-out {
-    opacity: 0;
-  }
-  
-  #page-title {
-    font-size: 2rem;
-    letter-spacing: 0.5px;
-  }
-  
-  /* ------------------------------
-     PAGE TRANSITIONS
-  ------------------------------ */
-  
-  #app {
-    opacity: 1;
-    transition: opacity 0.4s ease;
-  }
-  
-  #app.fade-out {
-    opacity: 0;
-  }
-  
+  background: linear-gradient(135deg, #007bff 0%, #00b4d8 100%);
+  color: white;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 1rem;
+  padding: 1rem 0;
+  transition: background 0.5s ease-in-out, opacity 0.3s;
+}
+
+#page-header.fade-out {
+  opacity: 0;
+}
+
+#page-title {
+  font-size: 2rem;
+  letter-spacing: 0.5px;
+}
+
+/* ------------------------------
+   DARK MODE
+------------------------------ */
+
+body.dark-mode {
+  background-color: #121212;
+  color: #e5e5e5;
+}
+
+body.dark-mode .navbar {
+  background-color: #1e1e1e !important;
+  border-bottom: 1px solid #333;
+}
+
+body.dark-mode .navbar-brand {
+  color: #0af !important;
+}
+
+body.dark-mode .table {
+  background-color: #1e1e1e;
+}
+
+body.dark-mode .table th {
+  background-color: #222;
+  color: #ccc;
+}
+
+body.dark-mode .card {
+  background-color: #1c1c1c;
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode footer {
+  color: #aaa;
+}
+
+/* ------------------------------
+   PAGE TRANSITIONS
+------------------------------ */
+
+#app {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+#app.fade-out {
+  opacity: 0;
+}
+
+/* Floating theme toggle */
+.theme-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 2000;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+}

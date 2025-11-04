@@ -1,12 +1,72 @@
-<h1>Profile</h1>
-<form id="profile-form">
-  <div class="mb-3">
-    <label for="profile-name" class="form-label">Name</label>
-    <input type="text" class="form-control" id="profile-name" placeholder="Your Name">
+<!-- =========================================================
+     NUMMO APP — PROFILE VIEW
+     Clean, editable user profile page
+========================================================= -->
+
+<section class="container py-5 fade-in">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-body p-4">
+          <div class="text-center mb-4">
+            <img 
+              src="https://cdn-icons-png.flaticon.com/512/3177/3177440.png" 
+              alt="User avatar" 
+              class="rounded-circle mb-3" 
+              width="90" 
+              height="90">
+            <h3 class="fw-bold text-primary mb-1">My Profile</h3>
+            <p class="text-muted small">Manage your personal information</p>
+          </div>
+
+          <form id="profile-form" autocomplete="off">
+            <!-- Name -->
+            <div class="mb-3">
+              <label for="profile-name" class="form-label fw-semibold">Full Name</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                id="profile-name" 
+                placeholder="Your Name"
+                required>
+            </div>
+
+            <!-- Email -->
+            <div class="mb-3">
+              <label for="profile-email" class="form-label fw-semibold">Email</label>
+              <input 
+                type="email" 
+                class="form-control" 
+                id="profile-email" 
+                placeholder="you@example.com"
+                required>
+            </div>
+
+            <!-- Password update (optional) -->
+            <div class="mb-3">
+              <label for="profile-password" class="form-label fw-semibold">Change Password</label>
+              <input 
+                type="password" 
+                class="form-control" 
+                id="profile-password" 
+                placeholder="Leave blank to keep current password">
+            </div>
+
+            <!-- Submit -->
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary py-2 fw-semibold">
+                Save Changes
+              </button>
+            </div>
+          </form>
+
+          <div class="text-center mt-4">
+            <button class="btn btn-outline-danger btn-sm" id="logout-btn">
+              <i class="bi bi-box-arrow-right"></i> Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="mb-3">
-    <label for="profile-email" class="form-label">Email</label>
-    <input type="email" class="form-control" id="profile-email" placeholder="you@example.com">
-  </div>
-  <button type="submit" class="btn btn-primary">Update Profile</button>
-</form>
+</section>
