@@ -10,17 +10,23 @@ class CategoryService {
     }
 
     // --------------------------------------------------
-    // 🔹 Get all categories
+    // 🔹 GET ALL CATEGORIES (route calls get_all())
     // --------------------------------------------------
+    public function get_all(): array {
+        return $this->dao->getAll(); 
+    }
+
+    // (Optional but recommended)
+    // Keep your original camelCase version too:
     public function getAll(): array {
-        return $this->dao->getAll(); // ✅ fixed
+        return $this->dao->getAll();
     }
 
     // --------------------------------------------------
     // 🔹 Get category by ID
     // --------------------------------------------------
     public function get_by_id(int $id): array {
-        $category = $this->dao->getById($id); // ✅ fixed
+        $category = $this->dao->getById($id);
         if (!$category) {
             throw new Exception("Category not found", 404);
         }
@@ -36,9 +42,11 @@ class CategoryService {
         }
 
         // Check for duplicate by name
-        $existing = $this->dao->getByName($data['name']); // ✅ fixed (method added below)
-        if ($existing) {
-            throw new Exception("Category with this name already exists", 400);
+        if (method_exists($this->dao, 'getByName')) {
+            $existing = $this->dao->getByName($data['name']);
+            if ($existing) {
+                throw new Exception("Category with this name already exists", 400);
+            }
         }
 
         $id = $this->dao->create($data);
@@ -49,12 +57,12 @@ class CategoryService {
     // 🔹 Update category
     // --------------------------------------------------
     public function update(int $id, array $data): array {
-        $category = $this->dao->getById($id); // ✅ fixed
+        $category = $this->dao->getById($id);
         if (!$category) {
             throw new Exception("Category not found", 404);
         }
 
-        if (!empty($data['name'])) {
+        if (!empty($data['name']) && method_exists($this->dao, 'getByName')) {
             $existing = $this->dao->getByName($data['name']);
             if ($existing && $existing['id'] != $id) {
                 throw new Exception("Another category with this name exists", 400);
@@ -69,7 +77,7 @@ class CategoryService {
     // 🔹 Delete category
     // --------------------------------------------------
     public function delete(int $id): bool {
-        $category = $this->dao->getById($id); // ✅ fixed
+        $category = $this->dao->getById($id);
         if (!$category) {
             throw new Exception("Category not found", 404);
         }
