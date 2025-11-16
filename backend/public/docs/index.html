@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Nummo API Docs</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css" />
+
+  <style>
+    body {
+      margin: 0;
+      background: #0d1117;
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    #swagger-ui {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #111827;
+      border-radius: 14px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.4);
+    }
+
+    :root {
+      --nummo-yellow: #ffd34d;
+      --nummo-blue: #1e90ff;
+    }
+
+    .topbar-wrapper img {
+      content: url('https://i.imgur.com/pAsqBgK.png');
+      width: 50px;
+      height: auto;
+      margin-right: 15px;
+    }
+
+    .topbar-wrapper span {
+      color: var(--nummo-yellow) !important;
+      font-size: 26px !important;
+      font-weight: 700;
+    }
+
+    .opblock-tag {
+      color: var(--nummo-yellow) !important;
+      font-size: 24px !important;
+    }
+
+    .swagger-ui, .swagger-ui * {
+      color: #e5e7eb !important;
+    }
+
+    .opblock {
+      background: #1f2937 !important;
+      border-radius: 12px !important;
+      border: 1px solid #374151 !important;
+    }
+
+    .opblock-get { border-left: 6px solid var(--nummo-blue) !important; }
+    .opblock-post { border-left: 6px solid var(--nummo-yellow) !important; }
+    .opblock-put { border-left: 6px solid #10b981 !important; }
+    .opblock-delete { border-left: 6px solid #ef4444 !important; }
+
+    #nummo-footer {
+      text-align: center;
+      margin: 40px 0;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    #theme-toggle {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      background: var(--nummo-yellow);
+      color: black;
+      border: none;
+      padding: 8px 14px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 999;
+    }
+  </style>
+</head>
+
+<body>
+  <button id="theme-toggle">🌙 Dark Mode</button>
+
+  <div id="swagger-ui"></div>
+
+  <div id="nummo-footer">
+    © 2025 Nummo — Built with ❤️ by Džejna Sejfić
+  </div>
+
+  <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-standalone-preset.js"></script>
+  <script src="swagger-initializer.js"></script>
+</body>
+</html>
