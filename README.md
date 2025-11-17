@@ -1,94 +1,197 @@
-# 💳 Nummo — Peer-to-Peer Payment App (Milestone 2)
+# **Nummo WebApp – Backend (Milestone 3)**
 
-Nummo is a **mock peer-to-peer payment platform** inspired by Venmo, built as part of the Web Programming course.  
-The project is structured as a **single-page web application (SPA)** with a PHP + MySQL backend and a modern frontend.
+### *FlightPHP • MySQL • REST API • DAO/Service Architecture • Swagger Documentation*
 
-This version completes **Milestone 2**, which focuses on database setup and the DAO (Data Access Object) layer.
-
----
-
-## 🚀 Features Implemented (Milestone 2)
-
-✅ **Database Schema**  
-- Created `nummo_db` with fully normalized tables:  
-  `users`, `contacts`, `transactions`, `categories`, `merchants`.  
-- Includes relationships (FK constraints) and demo data.
-
-✅ **DAO Layer (PHP + PDO)**  
-- Implemented secure CRUD operations for all major entities.  
-- Verified with `dao_test.php` using prepared statements.  
-- Tested connection and queries via `Database.php`.
-
-✅ **Frontend SPA**  
-- Static single-page architecture using Bootstrap 5.  
-- Router-based navigation (Dashboard / Transactions / Profile / Login / Register).  
-- Live dashboard mockup with transaction summary and Chart.js integration.  
-- Clean, responsive UI.
-
-✅ **Code Structure**
-nummo-webapp/
-│
-├── backend/
-│ ├── config/Database.php
-│ ├── dao/
-│ │ ├── UserDao.php
-│ │ ├── TransactionDao.php
-│ │ ├── MerchantDao.php
-│ │ ├── ContactDao.php
-│ │ └── CategoryDao.php
-│ └── test/dao_test.php
-│
-├── frontend/
-│ ├── assets/
-│ │ ├── css/style.css
-│ │ └── js/
-│ │ ├── router.js
-│ │ ├── dashboard.js
-│ │ └── transactions.js
-│ └── index.html
-│
-└── sql/nummo_schema.sql
+This repository contains the backend implementation for **Nummo**, a peer-to-peer payment platform.
+The project follows a clean **DAO → Service → Route** architecture, includes full CRUD operations for all core entities, and provides a fully documented **OpenAPI 3.0** specification accessible through Swagger UI.
 
 ---
 
-## 🧩 Quick Local Run
+## 🚀 **Features Implemented**
 
-### 1️⃣ Run the frontend
+### **✔️ CRUD Endpoints**
+
+* **Users**
+* **Contacts**
+* **Categories**
+* **Merchants**
+* **Transactions**
+
+### **✔️ Architecture**
+
+* DAO layer (database queries)
+* Service layer (validation + business logic)
+* Routes layer (REST endpoints using FlightPHP)
+* Centralized error handling
+
+### **✔️ OpenAPI Documentation**
+
+* `GET /api/docs` → OpenAPI YAML
+* `GET /docs` → Interactive Swagger UI
+
+### **✔️ Development Enhancements**
+
+* CORS enabled
+* JSON response standardization
+* Validation layer
+* Clean routing structure
+* Composer autoloading
+
+---
+
+## 📁 **Project Structure**
+
+```
+backend/
+│
+├── config/
+│   └── Database.php
+│
+├── dao/
+│   ├── BaseDao.php
+│   ├── UserDao.php
+│   ├── CategoryDao.php
+│   ├── MerchantDao.php
+│   ├── ContactDao.php
+│   └── TransactionDao.php
+│
+├── services/
+│   ├── UserService.php
+│   ├── CategoryService.php
+│   ├── MerchantService.php
+│   ├── ContactService.php
+│   ├── TransactionService.php
+│   └── Validation.php
+│
+├── routes/
+│   ├── users.php
+│   ├── categories.php
+│   ├── merchants.php
+│   ├── transactions.php
+│   ├── contacts.php
+│   └── docs.php
+│
+├── public/
+│   ├── index.php           # FlightPHP entrypoint
+│   └── docs/
+│       └── index.html      # Swagger UI (CDN version)
+│
+├── docs/
+│   └── openapi.yaml        # OpenAPI 3.0 spec
+│
+└── vendor/                 # Composer dependencies
+```
+
+---
+
+## 🛠️ **How to Run the Backend**
+
+### **1️⃣ Install dependencies**
+
 ```bash
-cd frontend
-python3 -m http.server 8000
-Visit → http://localhost:8000
-
-2️⃣ Run the backend (when needed)
 cd backend
 composer install
-php -S localhost:8080
+```
 
-3️⃣ Import the database
-mysql -u root -p < sql/nummo_schema.sql
+### **2️⃣ Start the development server**
 
-## 🧩 Database Diagram
+```bash
+php -S localhost:8000 -t public
+```
 
-![Nummo Database ERD](./image.png)
+### **3️⃣ API base URL**
 
-## 🚀 Milestone 3 — Live API, Filters & Transaction Creation
+```
+http://localhost:8000
+```
 
-**New Features**
-- Live backend integration with FlightPHP and MySQL  
-- Transaction filters by status and category  
-- Add Transaction form with POST API  
-- Real-time data rendering with Bootstrap styling  
-- Backend modularized (DAO, routes, config, public entry point)
+---
 
-**Next Steps**
-- Implement authentication  
-- Add transaction editing and deletion  
-- Display user balances dynamically  
+## 📚 **API Documentation**
 
+### **OpenAPI YAML**
 
-👩‍💻 Author
+```
+http://localhost:8000/api/docs
+```
 
-Dzejna Sejfic
-Burch International University – IT Department
-“Built with ❤️ and PHP.”
+### **Swagger UI (Interactive Docs)**
+
+```
+http://localhost:8000/docs
+```
+
+Includes full documentation for:
+
+* Users
+* Contacts
+* Categories
+* Merchants
+* Transactions
+
+---
+
+## 🧪 **Testing the API**
+
+### All Users
+
+```bash
+curl http://localhost:8000/api/users
+```
+
+### All Categories
+
+```bash
+curl http://localhost:8000/api/categories
+```
+
+### All Merchants
+
+```bash
+curl http://localhost:8000/api/merchants
+```
+
+### YAML Output
+
+```bash
+curl http://localhost:8000/api/docs
+```
+
+---
+
+## 🗄️ **Database**
+
+The backend uses **MySQL** and includes tables for:
+
+* `users`
+* `contacts`
+* `categories`
+* `merchants`
+* `transactions`
+
+Configure connection in:
+
+```
+backend/config/Database.php
+```
+
+---
+
+## 🧰 **Technologies Used**
+
+* PHP 8+
+* FlightPHP Framework
+* MySQL
+* Composer (autoloading)
+* OpenAPI 3.0
+* Swagger UI via CDN
+
+---
+
+## 👩‍💻 **Author**
+
+**Džejna Sejfić**
+International Burch University
+
+Web Programming — *Milestone 3 Submission*
 

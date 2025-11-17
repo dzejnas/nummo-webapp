@@ -9,15 +9,20 @@ class MerchantDao extends BaseDao {
     // ====================================================
     // 🔹 Get all merchants
     // ====================================================
-    public function getAll(): array {
-        $stmt = $this->db->query("
+    public function getAll(int $limit = 1000, int $offset = 0): array {
+        $stmt = $this->db->prepare("
             SELECT id, name, category, contact_email, created_at 
             FROM {$this->table}
             ORDER BY name ASC
+            LIMIT :limit OFFSET :offset
         ");
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+    
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
+    
     // ====================================================
     // 🔹 Create new merchant
     // ====================================================
