@@ -1,48 +1,23 @@
 <?php
-// ==========================================================
-// Nummo — Database Connector (Milestone 2)
-// ==========================================================
+require_once __DIR__ . '/Settings.php';
 
-class Database {
-    private static ?\PDO $conn = null;
+// Creates one shared PDO connection for the whole request (singleton).
+class Database
+{
+    private static ?PDO $connection = null;
 
-    public static function getConnection(): \PDO {
-        if (self::$conn !== null) {
-            return self::$conn;
+    public static function getConnection(): PDO
+    {
+        if (self::$connection === null) {
+            $db  = Settings::get('db');
+            $dsn = "mysql:host={$db['host']};port={$db['port']};dbname={$db['name']};charset=utf8mb4";
+
+            self::$connection = new PDO($dsn, $db['user'], $db['pass'], [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // throw on SQL errors
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       // rows as ['column' => value]
+                PDO::ATTR_EMULATE_PREPARES   => false,                  // real prepared statements
+            ]);
         }
-
-        // Try to load .env file if it exists
-        $envPath = __DIR__ . '/../.env';
-        if (file_exists($envPath)) {
-            $vars = parse_ini_file($envPath);
-            foreach ($vars as $key => $value) {
-                putenv("$key=$value");
-            }
-        }
-
-        // Local default fallback for testing
-        $host = getenv('DB_HOST') ?: '127.0.0.1';
-        $port = getenv('DB_PORT') ?: '3306';
-        $db   = getenv('DB_NAME') ?: 'nummo_db';
-        $user = getenv('DB_USER') ?: 'nummo_user';
-        $pass = getenv('DB_PASS') ?: 'StrongPass#2025!';
-        $charset = 'utf8mb4';
-
-        $dsn = "mysql:host={$host};port={$port};dbname={$db};charset={$charset}";
-        $options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ];
-
-        try {
-            self::$conn = new PDO($dsn, $user, $pass, $options);
-            error_log("✅ Database connected (Milestone 2)");
-        } catch (PDOException $e) {
-            error_log("❌ DB connection failed: " . $e->getMessage());
-            throw new RuntimeException('DB connection failed: ' . $e->getMessage());
-        }
-
-        return self::$conn;
+        return self::$connection;
     }
 }

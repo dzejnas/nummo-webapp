@@ -48,19 +48,53 @@ sql/        database schema + sample data
 docs/       ERD and AI usage log
 ```
 
-## Running the frontend locally
+## Roles and test accounts
 
-```bash
-cd frontend
-php -S localhost:8000
-```
+| Role | Email | Password |
+|---|---|---|
+| admin | admin@nummo.com | Admin123! |
+| user | amina@nummo.com | User123! |
+| user | tarik@nummo.com | User123! |
 
-Open http://localhost:8000.
+## Running locally
+
+Requirements: PHP 8.1+, Composer, MySQL 8.
+
+1. **Database** — import the schema and sample data (creates the `nummo_db` database):
+   ```bash
+   mysql -u root -p < sql/nummo_db.sql
+   ```
+2. **Configuration** — copy the template and fill in your database credentials:
+   ```bash
+   cp backend/config/config.example.php backend/config/config.php
+   ```
+3. **Dependencies**
+   ```bash
+   cd backend && composer install
+   ```
+4. **Check the DAO layer** — runs CRUD on every table and rolls it back:
+   ```bash
+   php backend/tests/dao_check.php
+   ```
+5. **Frontend**
+   ```bash
+   cd frontend && php -S localhost:8000
+   ```
+   Open http://localhost:8000.
+
+## Database and DAO layer
+
+- `sql/nummo_db.sql` — 6 tables with primary and foreign keys, plus sample data.
+- `backend/config/Database.php` — one shared PDO connection; credentials come from `config.php`.
+- `backend/dao/BaseDao.php` — reusable `getAll`, `getById`, `insert`, `update`, `delete`
+  with prepared statements. Only whitelisted columns can be written.
+- One DAO per table: `UserDao`, `CategoryDao`, `MerchantDao`, `ContactDao`,
+  `TransactionDao`, `PaymentRequestDao` — each adds the queries it needs (joins, filters).
 
 ## Status
 
 - [x] Milestone 1 — project structure, static SPA, ERD
-- [ ] Milestone 2 — database and DAO layer
+- [x] Milestone 2 — database and DAO layer
 - [ ] Milestone 3 — services, routes, OpenAPI, external API
 - [ ] Milestone 4 — authentication, middleware, logging, connected frontend
 - [ ] Milestone 5 — frontend MVC, validations, deployment

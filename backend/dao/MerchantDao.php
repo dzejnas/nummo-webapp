@@ -1,76 +1,29 @@
 <?php
 require_once __DIR__ . '/BaseDao.php';
 
-class MerchantDao extends BaseDao {
-    public function __construct() {
-        parent::__construct('merchants');
+class MerchantDao extends BaseDao
+{
+    private const SELECT = "SELECT m.*, c.name AS category_name
+                            FROM merchants m
+                            LEFT JOIN categories c ON c.id = m.category_id";
+
+    public function __construct()
+    {
+        parent::__construct('merchants', ['name', 'category_id', 'contact_email']);
     }
 
-    // ====================================================
-    // 🔹 Get all merchants
-    // ====================================================
-    public function getAll(int $limit = 1000, int $offset = 0): array {
-        $stmt = $this->db->prepare("
-            SELECT id, name, category, contact_email, created_at 
-            FROM {$this->table}
-            ORDER BY name ASC
-            LIMIT :limit OFFSET :offset
-        ");
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-    
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-    
-    // ====================================================
-    // 🔹 Create new merchant
-    // ====================================================
-    public function create(array $data): int {
-        $sql = "INSERT INTO {$this->table} (name, category, contact_email)
-                VALUES (:name, :category, :contact_email)";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            ':name'          => $data['name'],
-            ':category'      => $data['category'] ?? null,
-            ':contact_email' => $data['contact_email'] ?? null,
-        ]);
-        return (int)$this->db->lastInsertId();
+    public function getAll(): array
+    {
+        return $this->query(self::SELECT . " ORDER BY m.name");
     }
 
-    // ====================================================
-    // 🔹 Update merchant
-    // ====================================================
-    public function update(int $id, array $data): bool {
-        $fields = [];
-        $params = [':id' => $id];
-
-        foreach (['name', 'category', 'contact_email'] as $col) {
-            if (isset($data[$col])) {
-                $fields[] = "$col = :$col";
-                $params[":$col"] = $data[$col];
-            }
-        }
-
-        if (!$fields) return false;
-
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $fields) . " WHERE id = :id";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute($params);
+    public function getById(int $id): ?array
+    {
+        return $this->queryOne(self::SELECT . " WHERE m.id = :id", ['id' => $id]);
     }
 
-    // ====================================================
-    // 🔹 Optional: Search merchants by name or category
-    // ====================================================
-    public function search(string $query): array {
-        $stmt = $this->db->prepare("
-            SELECT id, name, category, contact_email, created_at
-            FROM {$this->table}
-            WHERE name LIKE :q OR category LIKE :q
-            ORDER BY name ASC
-        ");
-        $stmt->execute([':q' => "%$query%"]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    public function getByName(string $name): ?array
+    {
+        return $this->queryOne("SELECT * FROM merchants WHERE name = :name", ['name' => $name]);
     }
 }
-?>

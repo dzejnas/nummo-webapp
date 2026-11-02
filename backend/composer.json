@@ -1,18 +1,12 @@
 {
     "name": "dzejnas/nummo-backend",
-    "description": "Backend API for Nummo peer-to-peer payment app (FlightPHP + MySQL)",
-    "require": {
-        "mikecao/flight": "^2.0"
-    },
+    "description": "REST API for Nummo, a peer-to-peer payments app (FlightPHP + MySQL)",
     "license": "MIT",
-    "autoload": {
-        "psr-4": {
-            "Dzejnas\\NummoBackend\\": "src/"
-        }
+    "require": {
+        "php": ">=8.1",
+        "flightphp/core": "^3.0"
     },
     "authors": [
-        {
-            "name": "Dzejna Sejfic"
-        }
+        { "name": "Džejna Sejfić" }
     ]
 }

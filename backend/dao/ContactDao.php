@@ -1,56 +1,38 @@
 <?php
 require_once __DIR__ . '/BaseDao.php';
 
-class ContactDao extends BaseDao {
+class ContactDao extends BaseDao
+{
+    // Contact row + the friend's name and email
+    private const SELECT = "SELECT c.*, u.name AS friend_name, u.email AS friend_email
+                            FROM contacts c
+                            JOIN users u ON u.id = c.friend_user_id";
 
-    public function __construct() {
-        parent::__construct('contacts');
+    public function __construct()
+    {
+        parent::__construct('contacts', ['user_id', 'friend_user_id', 'status']);
     }
 
-    // ====================================================
-    // 🔹 Get all contacts for a specific user
-    // ====================================================
-    public function getAllForUser(int $userId, ?string $status = null): array {
-        $sql = "SELECT 
-                    c.id, c.user_id, c.friend_user_id, c.status, c.created_at,
-                    u.name AS friend_name, u.email AS friend_email
-                FROM {$this->table} c
-                JOIN users u ON u.id = c.friend_user_id
-                WHERE c.user_id = :uid";
-        
-        $params = [':uid' => $userId];
-        if (!empty($status)) {
-            $sql .= " AND c.status = :status";
-            $params[':status'] = $status;
-        }
-
-        $sql .= " ORDER BY c.created_at DESC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    public function getAll(): array
+    {
+        return $this->query(self::SELECT . " ORDER BY c.id");
     }
 
-    // ====================================================
-    // 🔹 Create new contact
-    // ====================================================
-    public function create(array $data): int {
-        $sql = "INSERT INTO {$this->table} (user_id, friend_user_id, status)
-                VALUES (:user_id, :friend_user_id, :status)";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            ':user_id'        => $data['user_id'],
-            ':friend_user_id' => $data['friend_user_id'],
-            ':status'         => $data['status'] ?? 'pending',
-        ]);
-        return (int)$this->db->lastInsertId();
+    public function getById(int $id): ?array
+    {
+        return $this->queryOne(self::SELECT . " WHERE c.id = :id", ['id' => $id]);
     }
 
-    // ====================================================
-    // 🔹 Update contact status
-    // ====================================================
-    public function updateStatus(int $id, string $status): bool {
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET status = :status WHERE id = :id");
-        return $stmt->execute([':status' => $status, ':id' => $id]);
+    public function getForUser(int $userId): array
+    {
+        return $this->query(self::SELECT . " WHERE c.user_id = :user_id ORDER BY u.name", ['user_id' => $userId]);
+    }
+
+    public function getByUsers(int $userId, int $friendUserId): ?array
+    {
+        return $this->queryOne(
+            "SELECT * FROM contacts WHERE user_id = :user_id AND friend_user_id = :friend_user_id",
+            ['user_id' => $userId, 'friend_user_id' => $friendUserId]
+        );
     }
 }
-?>

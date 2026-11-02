@@ -23,7 +23,7 @@ that the author can explain every line at an oral defense.
 
 ```
 backend/
-  config/       Config.php (reads config.php), Database.php (PDO), config.example.php
+  config/       Settings.php (reads config.php), Database.php (PDO), config.example.php
   dao/          BaseDao + one DAO per table — the only place with SQL
   services/     One service per entity — validation and business rules
   routes/       FlightPHP routes, one file per entity — HTTP in/out only
