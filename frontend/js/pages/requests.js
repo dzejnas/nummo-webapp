@@ -4,6 +4,7 @@ Pages.requests = {
     document.getElementById('new-request-button').addEventListener('click', () => this.openNew());
     document.getElementById('request-form').addEventListener('submit', (event) => this.create(event));
     document.getElementById('requests-table').addEventListener('click', (event) => this.handleAction(event));
+    Validation.clearOnInput(document.getElementById('request-form'));
     this.load();
   },
 
@@ -41,7 +42,7 @@ Pages.requests = {
 
   async openNew() {
     const form = document.getElementById('request-form');
-    form.reset();
+    Validation.reset(form);
     try {
       const contacts = await ContactService.getAll();
       const people = contacts
@@ -57,6 +58,7 @@ Pages.requests = {
   async create(event) {
     event.preventDefault();
     const form = event.target;
+    if (!Validation.check(form)) return;
     try {
       await UI.busy(form.querySelector('[type=submit]'), () => PaymentRequestService.create(UI.formData(form)));
       UI.modal('request-modal').hide();

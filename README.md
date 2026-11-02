@@ -100,6 +100,9 @@ On Apache, point the document root to `backend/public`; `.htaccess` sends every 
 ## Frontend
 
 Single-page app (`frontend/`), every page connected to the REST API — no hard-coded data.
+It follows an MVC split: **views** (`views/*.html`) only hold HTML, **controllers** (`js/pages/`)
+handle events and rendering, and **services** (`js/services/`) are the only code that talks to the
+backend (through `js/api.js`). No view or controller calls `fetch()` directly.
 
 ```
 js/config.js        API address
@@ -108,8 +111,19 @@ js/api.js           fetch wrapper: adds the JWT, handles 401/403 — the only co
 js/services/        one service object per resource (TransactionService, ContactService, ...)
 js/pages/           one controller per view: loads data through services, renders, handles forms
 js/router.js        hash router with route guards (guest / user / admin)
+js/validation.js    client-side form validation
 views/*.html        HTML templates
 ```
+
+### Validation
+
+Every form is validated twice:
+
+- **Client-side** (`js/validation.js`): rules come from the HTML attributes (`required`,
+  `type="email"`, `minlength`, `maxlength`, `min`, `max`, `step="0.01"`). Invalid fields are
+  marked red with a message, and nothing is sent to the API.
+- **Server-side** (`backend/utils/Validator.php` + services): the same rules plus business rules
+  (unique email, enough balance, …). A request that skips the frontend still gets a `400`.
 
 ## Database and DAO layer
 
@@ -189,7 +203,57 @@ Errors look like `{"error": "message"}`; unexpected errors are logged but never 
 
 ## Deployed application
 
-Not deployed yet (Milestone 5).
+- **Live app:** _add the link here after deploying (see below)_
+- **Swagger:** _live link_ + `/docs/`
+- Test accounts: see [Roles and test accounts](#roles-and-test-accounts).
+
+## Deployment
+
+The app runs as **one Docker container** (`Dockerfile`): Apache + PHP serve the frontend at `/`,
+the REST API at `/api` and Swagger at `/docs/`. Because everything is on one domain, the frontend
+uses the relative API address `/api` (`frontend/js/config.js`) and no CORS is needed.
+
+On the server there is no `config.php`; settings come from environment variables:
+
+| Variable | Example |
+|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | MySQL connection (`DB_NAME=nummo_db`) |
+| `JWT_SECRET` | a long random string (e.g. `openssl rand -hex 32`) |
+| `RATES_API_URL`, `RATES_API_TIMEOUT` | optional, default Frankfurter and 5 s |
+| `PORT` | set by the hosting platform; default 80 |
+
+### Deploying on Railway
+
+1. On [railway.com](https://railway.com) choose **New Project → Deploy from GitHub repo** and pick
+   `nummo-webapp`. Railway finds the `Dockerfile` and builds it.
+2. In the project, **New → Database → MySQL**.
+3. In the app service → **Variables**, add:
+   ```
+   DB_HOST=${{MySQL.MYSQLHOST}}
+   DB_PORT=${{MySQL.MYSQLPORT}}
+   DB_USER=${{MySQL.MYSQLUSER}}
+   DB_PASS=${{MySQL.MYSQLPASSWORD}}
+   DB_NAME=nummo_db
+   JWT_SECRET=<long random string>
+   ```
+4. Import the database. In the MySQL service → **Connect**, copy the public host and port, then:
+   ```bash
+   docker run --rm -i mysql:8.4 mysql -h <host> -P <port> -u root -p<password> < sql/nummo_db.sql
+   ```
+   (or `mysql -h <host> -P <port> -u root -p < sql/nummo_db.sql` with a local MySQL client).
+5. App service → **Settings → Networking → Generate Domain**. Put that link at the top of this section.
+
+Any other Docker host (DigitalOcean App Platform with the GitHub Student Pack, Render + an external
+MySQL, a VPS) works the same way: build the `Dockerfile` and set the variables above.
+
+### Running the production image locally
+
+```bash
+docker build -t nummo-app .
+docker run -p 8090:80 -e DB_HOST=host.docker.internal -e DB_PORT=3306 -e DB_USER=root \
+  -e DB_PASS=<password> -e DB_NAME=nummo_db -e JWT_SECRET=<secret> nummo-app
+```
+Open http://localhost:8090.
 
 ## Status
 
@@ -197,4 +261,4 @@ Not deployed yet (Milestone 5).
 - [x] Milestone 2 — database and DAO layer
 - [x] Milestone 3 — services, routes, OpenAPI, external API
 - [x] Milestone 4 — authentication, middleware, logging, connected frontend
-- [ ] Milestone 5 — frontend MVC, validations, deployment
+- [x] Milestone 5 — frontend MVC, validations, deployment setup (add the live link after deploying)

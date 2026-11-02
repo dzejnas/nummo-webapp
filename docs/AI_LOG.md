@@ -136,3 +136,31 @@ ran it locally, and committed the result myself.
 - In the browser: login, dashboard with real data, sending money, adding a contact, requesting
   money, paying a request as the other user, admin pages, the Admin menu hidden for users, and
   being sent to the login page with an expired token.
+
+## Milestone 5 — Frontend MVC, validations, deployment
+
+**What the AI was used for**
+- `js/validation.js`: client-side validation driven by HTML attributes, with Bootstrap error
+  messages, used by every form. Server-side validation was already in the services.
+- Checking the frontend MVC rule: no page controller calls `fetch()`/`Api` directly — only
+  the service objects do.
+- Deployment setup: `Dockerfile`, `deploy/` (Apache config, API entry file, start script),
+  `Settings` reading environment variables when there is no `config.php`, README instructions.
+
+**Most important prompts**
+- "Please continue with milestone 4 and 5 … let's finish a whole project."
+
+**Cases where the AI was wrong or produced poor code**
+1. *The DAO check depended on the data.* After testing the UI (which created a "Travel" category),
+   `dao_check.php` crashed with a duplicate-key error, because it always inserted a category called
+   "Travel". The check now uses unique names, so it works on any database.
+2. *Swagger "Try it out" would have called localhost on the server.* The OpenAPI spec had
+   `servers: http://localhost:8080`, which only works on my machine. It is now `/`, so Swagger
+   calls whichever server the page is loaded from.
+
+**What I checked myself**
+- Every form shows the right messages for empty fields, bad emails, short passwords, negative
+  amounts and amounts with 3 decimals, and sends nothing when invalid.
+- Built the Docker image and ran it locally against MySQL: the SPA, login with JWT, the API,
+  Swagger and the exchange rates all work, and PHP source files cannot be downloaded.
+- The dashboard on a 375 px wide (phone) screen has no horizontal scrolling.

@@ -8,6 +8,7 @@ Pages.merchants = {
     document.getElementById('new-merchant-button').addEventListener('click', () => this.openForm(null));
     document.getElementById('merchant-form').addEventListener('submit', (event) => this.save(event));
     document.getElementById('merchants-table').addEventListener('click', (event) => this.handleAction(event));
+    Validation.clearOnInput(document.getElementById('merchant-form'));
 
     if (isAdmin) {
       CategoryService.getAll()
@@ -40,7 +41,7 @@ Pages.merchants = {
 
   openForm(merchant) {
     const form = document.getElementById('merchant-form');
-    form.reset();
+    Validation.reset(form);
     form.elements.id.value = merchant ? merchant.id : '';
     if (merchant) {
       form.elements.name.value = merchant.name;
@@ -54,6 +55,7 @@ Pages.merchants = {
   async save(event) {
     event.preventDefault();
     const form = event.target;
+    if (!Validation.check(form)) return;
     const data = UI.formData(form);
     try {
       await UI.busy(form.querySelector('[type=submit]'), () => data.id

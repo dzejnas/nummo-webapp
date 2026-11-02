@@ -6,6 +6,7 @@ Pages.users = {
     document.getElementById('new-user-button').addEventListener('click', () => this.openForm(null));
     document.getElementById('user-form').addEventListener('submit', (event) => this.save(event));
     document.getElementById('users-table').addEventListener('click', (event) => this.handleAction(event));
+    Validation.clearOnInput(document.getElementById('user-form'));
     this.load();
   },
 
@@ -33,7 +34,7 @@ Pages.users = {
 
   openForm(user) {
     const form = document.getElementById('user-form');
-    form.reset();
+    Validation.reset(form);
     form.elements.id.value = user ? user.id : '';
     if (user) {
       form.elements.name.value = user.name;
@@ -53,6 +54,7 @@ Pages.users = {
   async save(event) {
     event.preventDefault();
     const form = event.target;
+    if (!Validation.check(form)) return;
     const data = UI.formData(form);
     if (data.password === '') delete data.password;
     try {

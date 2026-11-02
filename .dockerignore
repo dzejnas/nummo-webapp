@@ -1,0 +1,7 @@
+.git
+.DS_Store
+backend/vendor
+backend/config/config.php
+backend/logs/*.log
+docs
+sql

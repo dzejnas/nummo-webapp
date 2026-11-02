@@ -89,8 +89,10 @@ Pages.dashboard = {
       form.elements.to.value = userCurrency;
     }
 
+    Validation.clearOnInput(form);
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
+      if (!Validation.check(form)) return;
       result.textContent = 'Converting…';
       date.textContent = '';
       try {
