@@ -14,7 +14,7 @@ that the author can explain every line at an oral defense.
 
 ## Tech stack
 
-- Backend: PHP 8.1+, FlightPHP 3 (`flightphp/core`), PDO + MySQL 8. Composer for dependencies.
+- Backend: PHP 8.1+, FlightPHP 3 (`flightphp/core`), `firebase/php-jwt`, PDO + MySQL 8. Composer for dependencies.
 - Frontend: plain HTML, CSS, JavaScript; Bootstrap 5, Bootstrap Icons, Chart.js (CDN).
 - API docs: OpenAPI 3 (`backend/docs/openapi.yaml`) shown with Swagger UI.
 - External API: Frankfurter (`https://api.frankfurter.dev/v1`) for exchange rates.
@@ -27,7 +27,7 @@ backend/
   dao/          BaseDao + one DAO per table — the only place with SQL
   services/     One service per entity — validation and business rules
   routes/       FlightPHP routes, one file per entity — HTTP in/out only
-  middleware/   Reusable Flight middleware (auth, roles, logging, errors)
+  middleware/   AuthMiddleware (JWT), RoleMiddleware, RequestLogger, ErrorHandler, Guards (loggedIn/adminOnly)
   utils/        ApiException, Validator, Logger
   logs/         info.log, error.log (not committed)
   docs/         openapi.yaml
@@ -35,7 +35,11 @@ backend/
   tests/        Simple CLI scripts that check the DAO/service layers
 frontend/
   index.html    SPA shell (navbar + <main id="app">)
-  css/  js/  views/  assets/
+  js/api.js     the only code that calls fetch(); adds the JWT, handles 401
+  js/services/  one object per API resource; pages call these, never Api directly
+  js/pages/     one controller per view (Pages.<name>.init())
+  js/router.js  hash router with guards (access: guest | user | admin)
+  views/        HTML templates   css/   assets/
 sql/            nummo_db.sql — schema + sample data
 docs/           ERD, AI_LOG.md
 ```
@@ -54,10 +58,14 @@ docs/           ERD, AI_LOG.md
    `Flight::json()` is not sent once an exception has been thrown (Flight v3).
 4. Routes use `Flight::register()` to create one service instance per request.
    Route ids are restricted to numbers: `/api/users/@id:[0-9]+`.
+   Every non-public route has `->addMiddleware(loggedIn())` or `->addMiddleware(adminOnly())`.
+   The logged-in user is `Flight::get('user')` (id, name, email, role from the JWT); routes pass
+   it to services, and services check ownership with `assertCanAccess()` (403).
 5. Secrets (DB credentials, JWT secret, API URLs/keys) live only in `backend/config/config.php`,
    which is git-ignored. Add any new setting to `config.example.php` too.
 6. Frontend is a single-page app: views in `frontend/views/*.html` are loaded by
    `frontend/js/router.js`. No full page reloads. No PHP in the frontend.
+   Put user data into HTML only through `UI.escape()`.
 7. Money is stored as `DECIMAL(12,2)` in EUR. Balances only change inside a DB transaction
    (`TransactionService::record()` expects the caller to have started one).
 8. External API calls go through `ExchangeRateService` only: always with a timeout, and every

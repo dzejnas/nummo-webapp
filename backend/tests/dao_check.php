@@ -26,15 +26,19 @@ $contacts     = new ContactDao();
 $transactions = new TransactionDao();
 $requests     = new PaymentRequestDao();
 
+// Unique names, so the check also works on a database that already has data
+$tag = substr(uniqid(), -6);
+
 $users->beginTransaction();
 
 try {
     echo "users\n";
-    $userId = $users->insert(['name' => 'Test User', 'email' => 'test@nummo.com',
+    $email  = "test-$tag@nummo.com";
+    $userId = $users->insert(['name' => 'Test User', 'email' => $email,
                               'password' => password_hash('secret123', PASSWORD_BCRYPT)]);
-    check('insert + getById', $users->getById($userId)['email'] === 'test@nummo.com');
+    check('insert + getById', $users->getById($userId)['email'] === $email);
     check('getById hides password', !isset($users->getById($userId)['password']));
-    check('getByEmail returns hash', password_verify('secret123', $users->getByEmail('test@nummo.com')['password']));
+    check('getByEmail returns hash', password_verify('secret123', $users->getByEmail($email)['password']));
     $users->update($userId, ['name' => 'Renamed', 'not_a_column' => 'ignored']);
     check('update', $users->getById($userId)['name'] === 'Renamed');
     $users->changeBalance($userId, 25.5);
@@ -42,20 +46,20 @@ try {
     check('getAll', count($users->getAll()) >= 4);
 
     echo "categories\n";
-    $categoryId = $categories->insert(['name' => 'Travel']);
-    check('insert + getByName', $categories->getByName('Travel')['id'] === $categoryId);
-    $categories->update($categoryId, ['name' => 'Trips']);
-    check('update', $categories->getById($categoryId)['name'] === 'Trips');
+    $categoryId = $categories->insert(['name' => "Travel $tag"]);
+    check('insert + getByName', $categories->getByName("Travel $tag")['id'] === $categoryId);
+    $categories->update($categoryId, ['name' => "Trips $tag"]);
+    check('update', $categories->getById($categoryId)['name'] === "Trips $tag");
 
     echo "merchants\n";
-    $merchantId = $merchants->insert(['name' => 'Test Shop', 'category_id' => $categoryId]);
-    check('insert + join category', $merchants->getById($merchantId)['category_name'] === 'Trips');
+    $merchantId = $merchants->insert(['name' => "Test Shop $tag", 'category_id' => $categoryId]);
+    check('insert + join category', $merchants->getById($merchantId)['category_name'] === "Trips $tag");
     $merchants->update($merchantId, ['contact_email' => 'shop@example.com']);
     check('update', $merchants->getById($merchantId)['contact_email'] === 'shop@example.com');
 
     echo "contacts\n";
     $contactId = $contacts->insert(['user_id' => $userId, 'friend_user_id' => 2, 'status' => 'pending']);
-    check('insert + join friend', $contacts->getById($contactId)['friend_name'] === 'Amina Hodzic');
+    check('insert + join friend', $contacts->getById($contactId)['friend_name'] === $users->getById(2)['name']);
     $contacts->update($contactId, ['status' => 'accepted']);
     check('update', $contacts->getById($contactId)['status'] === 'accepted');
     check('getForUser', count($contacts->getForUser($userId)) === 1);
@@ -64,7 +68,7 @@ try {
     echo "transactions\n";
     $txId = $transactions->insert(['sender_id' => $userId, 'merchant_id' => $merchantId,
                                    'category_id' => $categoryId, 'amount' => 9.99, 'note' => 'Test']);
-    check('insert + joins', $transactions->getById($txId)['merchant_name'] === 'Test Shop');
+    check('insert + joins', $transactions->getById($txId)['merchant_name'] === "Test Shop $tag");
     $transactions->update($txId, ['status' => 'failed']);
     check('update', $transactions->getById($txId)['status'] === 'failed');
     check('getFiltered by user', count($transactions->getFiltered($userId)) === 1);
@@ -73,7 +77,7 @@ try {
 
     echo "payment_requests\n";
     $requestId = $requests->insert(['requester_id' => $userId, 'payer_id' => 2, 'amount' => 5]);
-    check('insert + joins', $requests->getById($requestId)['payer_name'] === 'Amina Hodzic');
+    check('insert + joins', $requests->getById($requestId)['payer_name'] === $users->getById(2)['name']);
     $requests->update($requestId, ['status' => 'declined']);
     check('update', $requests->getById($requestId)['status'] === 'declined');
     check('getForUser', count($requests->getForUser($userId)) === 1);

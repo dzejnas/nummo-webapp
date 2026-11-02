@@ -57,6 +57,13 @@ class UserService extends BaseService
         return $this->getById($id);
     }
 
+    // A user editing their own profile cannot change their role or balance
+    public function updateProfile(int $id, array $data): array
+    {
+        unset($data['role'], $data['balance']);
+        return $this->update($id, $data);
+    }
+
     private function assertEmailIsFree(string $email, ?int $exceptUserId = null): void
     {
         $existing = $this->dao->getByEmail($email);

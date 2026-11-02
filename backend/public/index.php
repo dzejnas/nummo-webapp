@@ -10,8 +10,8 @@ if (PHP_SAPI === 'cli-server' && file_exists(__DIR__ . parse_url($_SERVER['REQUE
 }
 
 require_once __DIR__ . '/../vendor/autoload.php';
-require_once __DIR__ . '/../utils/ApiException.php';
-require_once __DIR__ . '/../utils/Logger.php';
+require_once __DIR__ . '/../middleware/RequestLogger.php';
+require_once __DIR__ . '/../middleware/ErrorHandler.php';
 
 // CORS: the frontend runs on a different port/domain, so the browser needs these headers
 header('Access-Control-Allow-Origin: *');
@@ -22,20 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Errors: services throw ApiException with an HTTP status (400, 404, 409, ...).
-// Anything else is unexpected: log the details, but only send a generic message to the client
-// (never SQL, file paths or stack traces).
-// jsonHalt sends the response right away; plain json() would not be sent after an exception.
-Flight::map('error', function (Throwable $e) {
-    if ($e instanceof ApiException) {
-        Flight::jsonHalt(['error' => $e->getMessage()], $e->getStatus());
-        return;
-    }
-    Logger::error(sprintf('%s %s 500 %s: %s (%s:%d)',
-        Flight::request()->method, Flight::request()->url,
-        get_class($e), $e->getMessage(), basename($e->getFile()), $e->getLine()));
-    Flight::jsonHalt(['error' => 'Something went wrong. Please try again later.'], 500);
-});
+// Middleware registered for every request:
+// - RequestLogger writes each request to logs/info.log
+// - ErrorHandler turns exceptions into JSON errors and logs them to logs/error.log
+// Route-level middleware (AuthMiddleware, RoleMiddleware) is added in the route files.
+RequestLogger::register();
+Flight::map('error', [ErrorHandler::class, 'handle']);
 
 Flight::map('notFound', function () {
     Flight::json(['error' => 'Endpoint not found'], 404);

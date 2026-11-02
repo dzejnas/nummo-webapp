@@ -31,8 +31,11 @@ Six tables (full diagram in [docs/ERD.md](docs/ERD.md)):
 
 | Role | Can do |
 |---|---|
-| `user` | Manage own profile, contacts, transactions and payment requests; view merchants and categories |
-| `admin` | Everything a user can, plus CRUD on users, merchants and categories |
+| `user` | Manage own profile, contacts, payments and payment requests; view merchants and categories |
+| `admin` | See all data, plus CRUD on users, merchants and categories (Admin menu in the navbar) |
+
+Roles are checked twice: the backend `RoleMiddleware` returns `403`, and the frontend hides
+admin pages and buttons from normal users.
 
 ## External API
 
@@ -94,6 +97,20 @@ Requirements: PHP 8.1+, Composer, MySQL 8.
 
 On Apache, point the document root to `backend/public`; `.htaccess` sends every request to `index.php`.
 
+## Frontend
+
+Single-page app (`frontend/`), every page connected to the REST API — no hard-coded data.
+
+```
+js/config.js        API address
+js/auth.js          token + logged-in user in localStorage
+js/api.js           fetch wrapper: adds the JWT, handles 401/403 — the only code using fetch()
+js/services/        one service object per resource (TransactionService, ContactService, ...)
+js/pages/           one controller per view: loads data through services, renders, handles forms
+js/router.js        hash router with route guards (guest / user / admin)
+views/*.html        HTML templates
+```
+
 ## Database and DAO layer
 
 - `sql/nummo_db.sql` — 6 tables with primary and foreign keys, plus sample data.
@@ -103,24 +120,59 @@ On Apache, point the document root to `backend/public`; `.htaccess` sends every 
 - One DAO per table: `UserDao`, `CategoryDao`, `MerchantDao`, `ContactDao`,
   `TransactionDao`, `PaymentRequestDao` — each adds the queries it needs (joins, filters).
 
+## Authentication, middleware and logging
+
+- **Register / log in:** `POST /api/auth/register`, `POST /api/auth/login`. Passwords are hashed
+  with bcrypt. Login returns a JWT (HS256, valid 24 h) signed with `jwt_secret` from `config.php`.
+- The frontend stores the token in `localStorage` and sends `Authorization: Bearer <token>` with
+  every request (`frontend/js/api.js`). On `401` it logs out and opens the login page; on `403`
+  it shows the error message.
+
+Middleware (`backend/middleware/`), all registered in FlightPHP:
+
+| Middleware | What it does |
+|---|---|
+| `AuthMiddleware` | Verifies the JWT on every protected route; `401` if missing, invalid or expired |
+| `RoleMiddleware` | Reusable role check, e.g. `new RoleMiddleware('admin')`; `403` otherwise |
+| `RequestLogger` | Writes every request to the info log (method, route, status, user, role, time) |
+| `ErrorHandler` | Catches all exceptions, logs them, returns JSON without SQL, paths or stack traces |
+
+Routes add them with `->addMiddleware(loggedIn())` or `->addMiddleware(adminOnly())`.
+
+Logs (not committed):
+
+- `backend/logs/info.log` — every request, logins, registrations, external API calls
+  ```
+  [2026-11-02 16:25:55] INFO GET /api/transactions?user_id=2 200 user=1 role=admin 2ms
+  [2026-11-02 16:25:33] INFO Login: user=2 role=user
+  ```
+- `backend/logs/error.log` — unhandled exceptions, database errors, failed logins, 401/403, external API failures
+  ```
+  [2026-11-02 16:25:55] ERROR GET /api/transactions/4 403 user=2 role=user You do not have access to this transaction
+  [2026-11-02 16:25:33] ERROR Failed login: email=amina@nummo.com
+  ```
+
 ## REST API
 
 Architecture: **route → service → DAO → database**. Routes only read the request and return JSON,
 services hold validation and business rules, DAOs hold all SQL.
 
-| Resource | Endpoints |
-|---|---|
-| Users | `GET/POST /api/users`, `GET/PUT/DELETE /api/users/{id}`, `GET /api/users/{id}/spending` |
-| Categories | `GET/POST /api/categories`, `GET/PUT/DELETE /api/categories/{id}` |
-| Merchants | `GET/POST /api/merchants`, `GET/PUT/DELETE /api/merchants/{id}` |
-| Contacts | `GET/POST /api/contacts`, `GET/PUT/DELETE /api/contacts/{id}` |
-| Transactions | `GET/POST /api/transactions`, `GET/PUT/DELETE /api/transactions/{id}` |
-| Payment requests | `GET/POST /api/payment-requests`, `GET/PUT/DELETE /api/payment-requests/{id}` |
-| Exchange rates | `GET /api/rates`, `GET /api/rates/convert`, `GET /api/rates/currencies` |
+| Resource | Endpoints | Access |
+|---|---|---|
+| Auth | `POST /api/auth/register`, `POST /api/auth/login` | public |
+| My profile | `GET/PUT /api/me`, `GET /api/me/spending` | logged in |
+| Users | `GET/POST /api/users`, `GET/PUT/DELETE /api/users/{id}`, `GET /api/users/{id}/spending` | admin |
+| Categories | `GET/POST /api/categories`, `GET/PUT/DELETE /api/categories/{id}` | read: logged in, write: admin |
+| Merchants | `GET/POST /api/merchants`, `GET/PUT/DELETE /api/merchants/{id}` | read: logged in, write: admin |
+| Contacts | `GET/POST /api/contacts`, `GET/PUT/DELETE /api/contacts/{id}` | own data (admin: all) |
+| Transactions | `GET/POST /api/transactions`, `GET/PUT/DELETE /api/transactions/{id}` | own data (admin: all) |
+| Payment requests | `GET/POST /api/payment-requests`, `GET/PUT/DELETE /api/payment-requests/{id}` | own data (admin: all) |
+| Exchange rates | `GET /api/rates`, `GET /api/rates/convert`, `GET /api/rates/currencies` | public |
 
 **Swagger documentation:** http://localhost:8080/docs/ (spec: `backend/docs/openapi.yaml`)
 
-Status codes: `200` OK, `201` created, `400` invalid input, `404` not found, `409` conflict
+Status codes: `200` OK, `201` created, `400` invalid input, `401` not logged in,
+`403` not allowed, `404` not found, `409` conflict
 (duplicate, or changing a completed payment), `500` unexpected error, `503` exchange rate API down.
 Errors look like `{"error": "message"}`; unexpected errors are logged but never show SQL or file paths.
 
@@ -132,6 +184,8 @@ Errors look like `{"error": "message"}`; unexpected errors are logged but never 
 - Paying a payment request creates a completed transaction from the payer to the requester.
 - Emails, category names and merchant names are unique; users cannot add themselves as contacts
   or send money to themselves.
+- Users only see their own contacts, payments and requests. Only the payer can pay or decline a
+  request; only the requester can change or delete it.
 
 ## Deployed application
 
@@ -142,5 +196,5 @@ Not deployed yet (Milestone 5).
 - [x] Milestone 1 — project structure, static SPA, ERD
 - [x] Milestone 2 — database and DAO layer
 - [x] Milestone 3 — services, routes, OpenAPI, external API
-- [ ] Milestone 4 — authentication, middleware, logging, connected frontend
+- [x] Milestone 4 — authentication, middleware, logging, connected frontend
 - [ ] Milestone 5 — frontend MVC, validations, deployment

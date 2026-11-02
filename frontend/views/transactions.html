@@ -1,14 +1,13 @@
 <div class="page-header">
   <h1 class="h3 fw-bold mb-0">Transactions</h1>
-  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#transaction-modal">
-    <i class="bi bi-send"></i> New payment
-  </button>
+  <button class="btn btn-primary" id="new-transaction-button"><i class="bi bi-send"></i> New payment</button>
 </div>
 
 <div class="card p-3 mb-3">
   <form class="row g-2" id="transaction-filters">
     <div class="col-6 col-md-4">
-      <select class="form-select" id="filter-status">
+      <label class="visually-hidden" for="filter-status">Status</label>
+      <select class="form-select" id="filter-status" name="status">
         <option value="">All statuses</option>
         <option value="completed">Completed</option>
         <option value="pending">Pending</option>
@@ -16,11 +15,8 @@
       </select>
     </div>
     <div class="col-6 col-md-4">
-      <select class="form-select" id="filter-category">
-        <option value="">All categories</option>
-        <option>Food</option><option>Transport</option><option>Shopping</option>
-        <option>Bills</option><option>Entertainment</option><option>Other</option>
-      </select>
+      <label class="visually-hidden" for="filter-category">Category</label>
+      <select class="form-select" id="filter-category" name="category_id"></select>
     </div>
   </form>
 </div>
@@ -31,39 +27,12 @@
       <thead>
         <tr><th>Date</th><th>From</th><th>To</th><th>Category</th><th>Note</th><th>Status</th><th class="text-end">Amount</th><th></th></tr>
       </thead>
-      <tbody id="transactions-table">
-        <tr>
-          <td>02.11.2026</td><td>Amina Hodzic</td><td>Tarik Begic</td><td>Food</td><td>Lunch</td>
-          <td><span class="badge text-bg-success">completed</span></td>
-          <td class="text-end">€12.50</td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></button>
-            <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
-          </td>
-        </tr>
-        <tr>
-          <td>31.10.2026</td><td>Amina Hodzic</td><td>Bingo Market</td><td>Shopping</td><td>Groceries</td>
-          <td><span class="badge text-bg-success">completed</span></td>
-          <td class="text-end">€35.90</td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></button>
-            <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
-          </td>
-        </tr>
-        <tr>
-          <td>30.10.2026</td><td>Amina Hodzic</td><td>Tarik Begic</td><td>Bills</td><td>Internet bill share</td>
-          <td><span class="badge text-bg-warning">pending</span></td>
-          <td class="text-end">€40.00</td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></button>
-            <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
-          </td>
-        </tr>
-      </tbody>
+      <tbody id="transactions-table"></tbody>
     </table>
   </div>
 </div>
 
+<!-- New payment -->
 <div class="modal fade" id="transaction-modal" tabindex="-1" aria-labelledby="transaction-modal-title" aria-hidden="true">
   <div class="modal-dialog">
     <form class="modal-content" id="transaction-form" novalidate>
@@ -79,37 +48,66 @@
             <option value="merchant">A merchant</option>
           </select>
         </div>
-        <div class="mb-3">
-          <label class="form-label" for="tx-receiver">Recipient</label>
-          <select class="form-select" id="tx-receiver" name="receiver_id">
-            <option value="3">Tarik Begic</option>
-          </select>
+        <div class="mb-3" id="tx-receiver-group">
+          <label class="form-label" for="tx-receiver">Contact</label>
+          <select class="form-select" id="tx-receiver" name="receiver_id" required></select>
+          <div class="invalid-feedback"></div>
         </div>
-        <div class="row g-2 mb-3">
-          <div class="col-8">
-            <label class="form-label" for="tx-amount">Amount</label>
-            <input type="number" class="form-control" id="tx-amount" name="amount" min="0.01" step="0.01" required>
-          </div>
-          <div class="col-4">
-            <label class="form-label" for="tx-currency">Currency</label>
-            <select class="form-select" id="tx-currency" name="currency"><option>EUR</option><option>USD</option></select>
-          </div>
+        <div class="mb-3 d-none" id="tx-merchant-group">
+          <label class="form-label" for="tx-merchant">Merchant</label>
+          <select class="form-select" id="tx-merchant" name="merchant_id"></select>
+          <div class="invalid-feedback"></div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="tx-amount">Amount (EUR)</label>
+          <input type="number" class="form-control" id="tx-amount" name="amount" min="0.01" max="1000000" step="0.01" required>
+          <div class="invalid-feedback"></div>
         </div>
         <div class="mb-3">
           <label class="form-label" for="tx-category">Category</label>
-          <select class="form-select" id="tx-category" name="category_id">
-            <option value="1">Food</option><option value="2">Transport</option><option value="3">Shopping</option>
-            <option value="4">Bills</option><option value="5">Entertainment</option><option value="6">Other</option>
-          </select>
+          <select class="form-select" id="tx-category" name="category_id"></select>
         </div>
-        <div class="mb-0">
+        <div class="mb-3">
           <label class="form-label" for="tx-note">Note</label>
           <input type="text" class="form-control" id="tx-note" name="note" maxlength="255">
+          <div class="invalid-feedback"></div>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="tx-pending" name="pending">
+          <label class="form-check-label" for="tx-pending">Save as pending (send later)</label>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
         <button type="submit" class="btn btn-primary">Send</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit a pending payment -->
+<div class="modal fade" id="transaction-edit-modal" tabindex="-1" aria-labelledby="transaction-edit-title" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" id="transaction-edit-form" novalidate>
+      <div class="modal-header">
+        <h2 class="modal-title h5" id="transaction-edit-title">Edit pending payment</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="id">
+        <div class="mb-3">
+          <label class="form-label" for="tx-edit-category">Category</label>
+          <select class="form-select" id="tx-edit-category" name="category_id"></select>
+        </div>
+        <div class="mb-0">
+          <label class="form-label" for="tx-edit-note">Note</label>
+          <input type="text" class="form-control" id="tx-edit-note" name="note" maxlength="255">
+          <div class="invalid-feedback"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
       </div>
     </form>
   </div>
