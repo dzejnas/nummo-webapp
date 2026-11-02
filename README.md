@@ -1,234 +1,277 @@
-# Nummo — Peer-to-Peer Payments
+<div align="center">
 
-Nummo is a single-page web app for sending and requesting money between friends and paying
-merchants. Users keep a balance, manage contacts, see their spending by category, and convert
-amounts between currencies using live exchange rates. Admins manage users, merchants and categories.
+<img src="frontend/assets/img/logo.svg" alt="Nummo logo" width="72" height="72">
+
+# Nummo
+
+**Send, request and track money between friends — a peer-to-peer payments web app.**
+
+![PHP](https://img.shields.io/badge/PHP-8.1+-777BB4?logo=php&logoColor=white)
+![FlightPHP](https://img.shields.io/badge/FlightPHP-3-0d6efd)
+![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)
+![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?logo=bootstrap&logoColor=white)
+![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens&logoColor=white)
+![OpenAPI](https://img.shields.io/badge/Docs-OpenAPI%203-6BA539?logo=openapiinitiative&logoColor=white)
 
 IBU · IT 2001 Web Programming · Džejna Sejfić
+
+**Live app:** _coming soon_ · **API docs:** `/docs/` on the live app
+
+</div>
+
+![Nummo dashboard](docs/screenshots/dashboard.png)
+
+## About
+
+Nummo is a single-page web application for everyday payments between people. Users keep a balance,
+add friends as contacts, send money to them or pay merchants, ask others for money with payment
+requests, and see where their money goes on a spending chart. A built-in currency converter shows
+live exchange rates. Administrators manage users, merchants and spending categories.
+
+### Features
+
+- 💸 **Send money** to a contact or pay a merchant — balances update instantly and safely
+- 📨 **Payment requests** — ask a friend for money; they can pay or decline with one click
+- 👥 **Contacts** — add people by email, block or remove them
+- 📊 **Dashboard** — balance, this month's income and spending, spending by category (Chart.js)
+- 💱 **Currency converter** — live rates from the [Frankfurter API](https://frankfurter.dev)
+- 🔐 **Accounts and roles** — register, log in with JWT; admin area for users, merchants, categories
+- 📱 **Responsive** — works on phones, tablets and desktops
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/transactions.png" alt="Transactions page (admin view)"></td>
+    <td width="50%"><img src="docs/screenshots/swagger.png" alt="Swagger API documentation"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Transactions with filters (admin view)</sub></td>
+    <td align="center"><sub>Swagger API documentation</sub></td>
+  </tr>
+</table>
 
 ## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | HTML, CSS, JavaScript, Bootstrap 5, Chart.js — single-page app |
-| Backend | PHP 8.1+, FlightPHP 3, PDO |
+| Frontend | HTML, CSS, JavaScript single-page app · Bootstrap 5 · Bootstrap Icons · Chart.js |
+| Backend | PHP 8.1+ · FlightPHP 3 · PDO · firebase/php-jwt |
 | Database | MySQL 8 |
 | API docs | OpenAPI 3 + Swagger UI |
-| External API | [Frankfurter](https://frankfurter.dev) exchange rates |
+| External API | [Frankfurter](https://frankfurter.dev) — European Central Bank exchange rates |
+| Deployment | Docker (Apache + PHP), environment-variable configuration |
 
-## Entities and relationships
+## Architecture
 
-Six tables (full diagram in [docs/ERD.md](docs/ERD.md)):
-
-- **users** — account, role (`user` / `admin`), balance and main currency
-- **categories** — spending categories (Food, Transport, …)
-- **merchants** — shops a user can pay; each belongs to a category
-- **contacts** — links a user to another user (`pending`, `accepted`, `blocked`)
-- **transactions** — a payment from a sender to a user **or** a merchant, with a category
-- **payment_requests** — one user asks another user to pay an amount
-
-## Roles
-
-| Role | Can do |
-|---|---|
-| `user` | Manage own profile, contacts, payments and payment requests; view merchants and categories |
-| `admin` | See all data, plus CRUD on users, merchants and categories (Admin menu in the navbar) |
-
-Roles are checked twice: the backend `RoleMiddleware` returns `403`, and the frontend hides
-admin pages and buttons from normal users.
-
-## External API
-
-The dashboard's **currency converter** uses the [Frankfurter API](https://frankfurter.dev)
-(European Central Bank rates) to show how much an amount is worth in another currency.
-
-- `ExchangeRateService` calls Frankfurter with a 5-second timeout (set in `config.php`).
-- Backend endpoints: `GET /api/rates`, `GET /api/rates/convert`, `GET /api/rates/currencies`.
-- If Frankfurter is slow or down, the failure is written to `backend/logs/error.log` and the
-  client gets `503` with a friendly message. The rest of the app keeps working.
-
-## Project structure
-
+```mermaid
+flowchart LR
+    subgraph Browser["Browser — single-page app"]
+        V["views/*.html"] --> C["pages/*.js<br/>controllers"]
+        C --> S["services/*.js"]
+        S --> A["api.js<br/>adds JWT"]
+    end
+    A -- "AJAX / JSON" --> R["routes"]
+    subgraph Backend["FlightPHP REST API"]
+        R --> M["middleware<br/>auth · role · logging · errors"]
+        M --> SV["services<br/>validation + business rules"]
+        SV --> D["DAOs<br/>PDO prepared statements"]
+        SV --> X["ExchangeRateService"]
+    end
+    D --> DB[("MySQL")]
+    X -- "HTTPS, 5 s timeout" --> F["Frankfurter API"]
 ```
-backend/    FlightPHP REST API (config, dao, services, routes, middleware, logs, docs, public)
-frontend/   SPA (index.html, css, js, views, assets)
-sql/        database schema + sample data
-docs/       ERD and AI usage log
-```
+
+Every request follows the same path: **click → AJAX call → route → middleware → service → DAO → SQL →
+JSON response → UI update**, and each request is written to the info log.
+
+## Database
+
+Six entities with primary and foreign keys — full diagram in [docs/ERD.md](docs/ERD.md)
+([dbdiagram.io source](docs/erd.dbml)).
+
+| Entity | Purpose | Relationships |
+|---|---|---|
+| **users** | account, role (`user` / `admin`), balance (EUR), display currency | — |
+| **categories** | spending categories (Food, Transport, …) | — |
+| **merchants** | shops a user can pay | belongs to a category |
+| **contacts** | a user's friend list (`pending`, `accepted`, `blocked`) | user → user |
+| **transactions** | a payment to a user **or** a merchant | sender, receiver, merchant, category |
+| **payment_requests** | one user asks another to pay | requester → payer |
 
 ## Roles and test accounts
 
-| Role | Email | Password |
-|---|---|---|
-| admin | admin@nummo.com | Admin123! |
-| user | amina@nummo.com | User123! |
-| user | tarik@nummo.com | User123! |
+| Role | Email | Password | Can do |
+|---|---|---|---|
+| admin | `admin@nummo.com` | `Admin123!` | See all data; manage users, merchants and categories |
+| user | `amina@nummo.com` | `User123!` | Own profile, contacts, payments and payment requests |
+| user | `tarik@nummo.com` | `User123!` | Same as above — use both to try payment requests |
 
-## Running locally
+Roles are enforced on the backend (`RoleMiddleware` → `403`, ownership checks in the services)
+and reflected in the UI (the Admin menu and admin buttons are hidden from normal users).
 
-Requirements: PHP 8.1+, Composer, MySQL 8.
+## External API — currency converter
 
-1. **Database** — import the schema and sample data (creates the `nummo_db` database):
-   ```bash
-   mysql -u root -p < sql/nummo_db.sql
-   ```
-2. **Configuration** — copy the template and fill in your database credentials:
-   ```bash
-   cp backend/config/config.example.php backend/config/config.php
-   ```
-3. **Dependencies**
-   ```bash
-   cd backend && composer install
-   ```
-4. **Check the DAO layer** — runs CRUD on every table and rolls it back:
-   ```bash
-   php backend/tests/dao_check.php
-   ```
-5. **Backend API** (from the repository root)
-   ```bash
-   php -S localhost:8080 -t backend/public backend/public/index.php
-   ```
-   API: http://localhost:8080/api/users · Swagger: http://localhost:8080/docs/
-6. **Frontend** (in a second terminal)
-   ```bash
-   cd frontend && php -S localhost:8000
-   ```
-   Open http://localhost:8000. The API address is set in `frontend/js/config.js`.
+The dashboard converter and the balance shown in the user's own currency use the
+[Frankfurter API](https://frankfurter.dev).
 
-On Apache, point the document root to `backend/public`; `.htaccess` sends every request to `index.php`.
+- `backend/services/ExchangeRateService.php` calls Frankfurter with a timeout (`rates_api_timeout`).
+- Endpoints: `GET /api/rates`, `GET /api/rates/convert`, `GET /api/rates/currencies`.
+- If Frankfurter is slow or down, the failure is written to the error log and the user sees a
+  friendly message (`503`). The rest of the app keeps working.
 
-## Frontend
+## Getting started
 
-Single-page app (`frontend/`), every page connected to the REST API — no hard-coded data.
-It follows an MVC split: **views** (`views/*.html`) only hold HTML, **controllers** (`js/pages/`)
-handle events and rendering, and **services** (`js/services/`) are the only code that talks to the
-backend (through `js/api.js`). No view or controller calls `fetch()` directly.
+**Requirements:** PHP 8.1+, Composer, MySQL 8.
 
-```
-js/config.js        API address
-js/auth.js          token + logged-in user in localStorage
-js/api.js           fetch wrapper: adds the JWT, handles 401/403 — the only code using fetch()
-js/services/        one service object per resource (TransactionService, ContactService, ...)
-js/pages/           one controller per view: loads data through services, renders, handles forms
-js/router.js        hash router with route guards (guest / user / admin)
-js/validation.js    client-side form validation
-views/*.html        HTML templates
+```bash
+# 1. Database: creates nummo_db with sample data
+mysql -u root -p < sql/nummo_db.sql
+
+# 2. Configuration: copy the template and fill in your database credentials and a JWT secret
+cp backend/config/config.example.php backend/config/config.php
+
+# 3. Backend dependencies
+cd backend && composer install && cd ..
+
+# 4. Start the API (http://localhost:8080) and the frontend (http://localhost:8000)
+php -S localhost:8080 -t backend/public backend/public/index.php
+cd frontend && php -S localhost:8000          # in a second terminal
 ```
 
-### Validation
+Open **http://localhost:8000** and log in with a test account.
+**Swagger:** http://localhost:8080/docs/ — click **Authorize** and paste a token from `POST /api/auth/login`.
 
-Every form is validated twice:
+Optional check of the database layer (runs CRUD on every table and rolls it back):
 
-- **Client-side** (`js/validation.js`): rules come from the HTML attributes (`required`,
-  `type="email"`, `minlength`, `maxlength`, `min`, `max`, `step="0.01"`). Invalid fields are
-  marked red with a message, and nothing is sent to the API.
-- **Server-side** (`backend/utils/Validator.php` + services): the same rules plus business rules
-  (unique email, enough balance, …). A request that skips the frontend still gets a `400`.
-
-## Database and DAO layer
-
-- `sql/nummo_db.sql` — 6 tables with primary and foreign keys, plus sample data.
-- `backend/config/Database.php` — one shared PDO connection; credentials come from `config.php`.
-- `backend/dao/BaseDao.php` — reusable `getAll`, `getById`, `insert`, `update`, `delete`
-  with prepared statements. Only whitelisted columns can be written.
-- One DAO per table: `UserDao`, `CategoryDao`, `MerchantDao`, `ContactDao`,
-  `TransactionDao`, `PaymentRequestDao` — each adds the queries it needs (joins, filters).
-
-## Authentication, middleware and logging
-
-- **Register / log in:** `POST /api/auth/register`, `POST /api/auth/login`. Passwords are hashed
-  with bcrypt. Login returns a JWT (HS256, valid 24 h) signed with `jwt_secret` from `config.php`.
-- The frontend stores the token in `localStorage` and sends `Authorization: Bearer <token>` with
-  every request (`frontend/js/api.js`). On `401` it logs out and opens the login page; on `403`
-  it shows the error message.
-
-Middleware (`backend/middleware/`), all registered in FlightPHP:
-
-| Middleware | What it does |
-|---|---|
-| `AuthMiddleware` | Verifies the JWT on every protected route; `401` if missing, invalid or expired |
-| `RoleMiddleware` | Reusable role check, e.g. `new RoleMiddleware('admin')`; `403` otherwise |
-| `RequestLogger` | Writes every request to the info log (method, route, status, user, role, time) |
-| `ErrorHandler` | Catches all exceptions, logs them, returns JSON without SQL, paths or stack traces |
-
-Routes add them with `->addMiddleware(loggedIn())` or `->addMiddleware(adminOnly())`.
-
-Logs (not committed):
-
-- `backend/logs/info.log` — every request, logins, registrations, external API calls
-  ```
-  [2026-11-02 16:25:55] INFO GET /api/transactions?user_id=2 200 user=1 role=admin 2ms
-  [2026-11-02 16:25:33] INFO Login: user=2 role=user
-  ```
-- `backend/logs/error.log` — unhandled exceptions, database errors, failed logins, 401/403, external API failures
-  ```
-  [2026-11-02 16:25:55] ERROR GET /api/transactions/4 403 user=2 role=user You do not have access to this transaction
-  [2026-11-02 16:25:33] ERROR Failed login: email=amina@nummo.com
-  ```
+```bash
+php backend/tests/dao_check.php
+```
 
 ## REST API
 
-Architecture: **route → service → DAO → database**. Routes only read the request and return JSON,
-services hold validation and business rules, DAOs hold all SQL.
-
 | Resource | Endpoints | Access |
 |---|---|---|
-| Auth | `POST /api/auth/register`, `POST /api/auth/login` | public |
-| My profile | `GET/PUT /api/me`, `GET /api/me/spending` | logged in |
-| Users | `GET/POST /api/users`, `GET/PUT/DELETE /api/users/{id}`, `GET /api/users/{id}/spending` | admin |
-| Categories | `GET/POST /api/categories`, `GET/PUT/DELETE /api/categories/{id}` | read: logged in, write: admin |
-| Merchants | `GET/POST /api/merchants`, `GET/PUT/DELETE /api/merchants/{id}` | read: logged in, write: admin |
-| Contacts | `GET/POST /api/contacts`, `GET/PUT/DELETE /api/contacts/{id}` | own data (admin: all) |
-| Transactions | `GET/POST /api/transactions`, `GET/PUT/DELETE /api/transactions/{id}` | own data (admin: all) |
-| Payment requests | `GET/POST /api/payment-requests`, `GET/PUT/DELETE /api/payment-requests/{id}` | own data (admin: all) |
-| Exchange rates | `GET /api/rates`, `GET /api/rates/convert`, `GET /api/rates/currencies` | public |
+| Auth | `POST /api/auth/register` · `POST /api/auth/login` | public |
+| My profile | `GET` `PUT /api/me` · `GET /api/me/spending` | logged in |
+| Users | `GET` `POST /api/users` · `GET` `PUT` `DELETE /api/users/{id}` · `GET /api/users/{id}/spending` | admin |
+| Categories | `GET` `POST /api/categories` · `GET` `PUT` `DELETE /api/categories/{id}` | read: logged in · write: admin |
+| Merchants | `GET` `POST /api/merchants` · `GET` `PUT` `DELETE /api/merchants/{id}` | read: logged in · write: admin |
+| Contacts | `GET` `POST /api/contacts` · `GET` `PUT` `DELETE /api/contacts/{id}` | own data (admin: all) |
+| Transactions | `GET` `POST /api/transactions` · `GET` `PUT` `DELETE /api/transactions/{id}` | own data (admin: all) |
+| Payment requests | `GET` `POST /api/payment-requests` · `GET` `PUT` `DELETE /api/payment-requests/{id}` | own data (admin: all) |
+| Exchange rates | `GET /api/rates` · `GET /api/rates/convert` · `GET /api/rates/currencies` | public |
 
-**Swagger documentation:** http://localhost:8080/docs/ (spec: `backend/docs/openapi.yaml`)
+All 39 operations are documented in [`backend/docs/openapi.yaml`](backend/docs/openapi.yaml).
+Responses are JSON; errors look like `{"error": "message"}` with `400`, `401`, `403`, `404`, `409`,
+`500` or `503`. Unexpected errors are logged but never expose SQL, file paths or stack traces.
 
-Status codes: `200` OK, `201` created, `400` invalid input, `401` not logged in,
-`403` not allowed, `404` not found, `409` conflict
-(duplicate, or changing a completed payment), `500` unexpected error, `503` exchange rate API down.
-Errors look like `{"error": "message"}`; unexpected errors are logged but never show SQL or file paths.
+<details>
+<summary><b>Business rules</b></summary>
 
-### Business rules
-
-- A payment goes to **either** a user or a merchant. Completed payments move money between balances
-  inside one DB transaction; the sender needs enough balance.
-- Only pending transactions can be changed; completed ones cannot be edited or deleted.
-- Paying a payment request creates a completed transaction from the payer to the requester.
-- Emails, category names and merchant names are unique; users cannot add themselves as contacts
-  or send money to themselves.
+- A payment goes to **either** a user or a merchant. Completed payments move money between
+  balances inside one database transaction, and the sender needs enough balance.
+- Only pending payments can be changed; completed payments cannot be edited or deleted.
+- Paying a payment request creates a completed payment from the payer to the requester.
 - Users only see their own contacts, payments and requests. Only the payer can pay or decline a
   request; only the requester can change or delete it.
+- Emails, category names and merchant names are unique; users cannot send money to themselves.
 
-## Deployed application
+</details>
 
-- **Live app:** _add the link here after deploying (see below)_
-- **Swagger:** _live link_ + `/docs/`
-- Test accounts: see [Roles and test accounts](#roles-and-test-accounts).
+<details>
+<summary><b>Authentication, middleware and logging</b></summary>
+
+Passwords are hashed with bcrypt. Logging in returns a JWT (HS256, valid 24 hours); the frontend
+sends it as `Authorization: Bearer <token>` with every request. On `401` it logs out and opens the
+login page; on `403` it shows the error.
+
+| Middleware (`backend/middleware/`) | What it does |
+|---|---|
+| `AuthMiddleware` | Verifies the JWT on every protected route; `401` if missing, invalid or expired |
+| `RoleMiddleware` | Reusable role check, e.g. `new RoleMiddleware('admin')`; `403` otherwise |
+| `RequestLogger` | Writes every request to the info log |
+| `ErrorHandler` | Catches all exceptions, logs them and returns a safe JSON error |
+
+Logs (not committed to Git):
+
+```text
+backend/logs/info.log    every request, logins, registrations, external API calls
+[2026-11-02 16:25:55] INFO GET /api/transactions?user_id=2 200 user=1 role=admin 2ms
+
+backend/logs/error.log   exceptions, database errors, failed logins, 401/403, external API failures
+[2026-11-02 16:25:55] ERROR GET /api/transactions/4 403 user=2 role=user You do not have access to this transaction
+```
+
+</details>
+
+<details>
+<summary><b>Frontend structure and validation</b></summary>
+
+The frontend follows an MVC split: views hold only HTML, page controllers handle events and
+rendering, and service files are the only code that talks to the backend.
+
+```text
+frontend/
+├── index.html          app shell (navbar + <main id="app">)
+├── views/              HTML templates, one per page
+├── js/router.js        hash router with route guards (guest / user / admin)
+├── js/pages/           one controller per page
+├── js/services/        one service per API resource — the only code that calls the API
+├── js/api.js           fetch wrapper: adds the JWT, handles 401/403
+├── js/validation.js    client-side form validation
+└── css/ · assets/
+```
+
+Every form is validated twice: in the browser (`js/validation.js`, rules from the HTML attributes
+`required`, `type="email"`, `minlength`, `min`, `step`, …) and again on the server
+(`backend/utils/Validator.php` and the services).
+
+</details>
+
+## Project structure
+
+```text
+nummo-webapp/
+├── backend/
+│   ├── config/        Settings, Database (PDO), config.example.php
+│   ├── dao/           BaseDao + one DAO per table — all SQL lives here
+│   ├── services/      business logic and validation, one service per entity
+│   ├── routes/        FlightPHP routes, one file per resource
+│   ├── middleware/    JWT auth, roles, request logging, error handling
+│   ├── utils/         ApiException, Validator, Logger
+│   ├── docs/          openapi.yaml
+│   ├── public/        index.php (front controller), Swagger UI
+│   ├── logs/          info.log, error.log (git-ignored)
+│   └── tests/         dao_check.php
+├── frontend/          single-page app
+├── sql/               nummo_db.sql — schema + sample data
+├── docs/              ERD, screenshots, AI usage log
+├── deploy/            Apache config and start script for Docker
+├── Dockerfile
+├── AGENTS.md          context and rules for AI coding assistants
+└── README.md
+```
 
 ## Deployment
 
-The app runs as **one Docker container** (`Dockerfile`): Apache + PHP serve the frontend at `/`,
-the REST API at `/api` and Swagger at `/docs/`. Because everything is on one domain, the frontend
-uses the relative API address `/api` (`frontend/js/config.js`) and no CORS is needed.
+The whole app runs as **one Docker container** (Apache + PHP): the frontend at `/`, the API at
+`/api` and Swagger at `/docs/`. On the server there is no `config.php`; settings come from
+environment variables.
 
-On the server there is no `config.php`; settings come from environment variables:
-
-| Variable | Example |
+| Variable | Value |
 |---|---|
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | MySQL connection (`DB_NAME=nummo_db`) |
-| `JWT_SECRET` | a long random string (e.g. `openssl rand -hex 32`) |
-| `RATES_API_URL`, `RATES_API_TIMEOUT` | optional, default Frankfurter and 5 s |
-| `PORT` | set by the hosting platform; default 80 |
+| `DB_HOST` `DB_PORT` `DB_NAME` `DB_USER` `DB_PASS` | MySQL connection (`DB_NAME=nummo_db`) |
+| `JWT_SECRET` | a long random string, e.g. from `openssl rand -hex 32` |
+| `RATES_API_URL` `RATES_API_TIMEOUT` | optional — defaults to Frankfurter and 5 seconds |
+| `PORT` | set by the hosting platform (default 80) |
 
-### Deploying on Railway
+<details>
+<summary><b>Deploying on Railway</b></summary>
 
-1. On [railway.com](https://railway.com) choose **New Project → Deploy from GitHub repo** and pick
-   `nummo-webapp`. Railway finds the `Dockerfile` and builds it.
-2. In the project, **New → Database → MySQL**.
-3. In the app service → **Variables**, add:
-   ```
+1. On [railway.com](https://railway.com): **New Project → Deploy from GitHub repo** → `nummo-webapp`.
+   Railway builds the `Dockerfile`.
+2. **New → Database → MySQL**.
+3. In the app service → **Variables**:
+   ```text
    DB_HOST=${{MySQL.MYSQLHOST}}
    DB_PORT=${{MySQL.MYSQLPORT}}
    DB_USER=${{MySQL.MYSQLUSER}}
@@ -236,29 +279,46 @@ On the server there is no `config.php`; settings come from environment variables
    DB_NAME=nummo_db
    JWT_SECRET=<long random string>
    ```
-4. Import the database. In the MySQL service → **Connect**, copy the public host and port, then:
+4. Import the data using the MySQL service's public host and port (**Connect** tab):
    ```bash
    docker run --rm -i mysql:8.4 mysql -h <host> -P <port> -u root -p<password> < sql/nummo_db.sql
    ```
-   (or `mysql -h <host> -P <port> -u root -p < sql/nummo_db.sql` with a local MySQL client).
-5. App service → **Settings → Networking → Generate Domain**. Put that link at the top of this section.
+5. App service → **Settings → Networking → Generate Domain**, then add the link at the top of this README.
 
-Any other Docker host (DigitalOcean App Platform with the GitHub Student Pack, Render + an external
-MySQL, a VPS) works the same way: build the `Dockerfile` and set the variables above.
+Any other Docker host (DigitalOcean App Platform, Render, a VPS) works the same way.
 
-### Running the production image locally
+</details>
+
+<details>
+<summary><b>Running the production image locally</b></summary>
 
 ```bash
 docker build -t nummo-app .
 docker run -p 8090:80 -e DB_HOST=host.docker.internal -e DB_PORT=3306 -e DB_USER=root \
   -e DB_PASS=<password> -e DB_NAME=nummo_db -e JWT_SECRET=<secret> nummo-app
 ```
+
 Open http://localhost:8090.
 
-## Status
+</details>
 
-- [x] Milestone 1 — project structure, static SPA, ERD
-- [x] Milestone 2 — database and DAO layer
-- [x] Milestone 3 — services, routes, OpenAPI, external API
-- [x] Milestone 4 — authentication, middleware, logging, connected frontend
-- [x] Milestone 5 — frontend MVC, validations, deployment setup (add the live link after deploying)
+## Milestones
+
+| | Milestone | Contents |
+|---|---|---|
+| ✅ | 1 · Setup, static frontend, ERD | project structure, single-page app, ERD |
+| ✅ | 2 · Database and DAO layer | MySQL schema with sample data, DAO classes |
+| ✅ | 3 · Services, routes, OpenAPI, external API | business logic, CRUD API, Swagger, currency rates |
+| ✅ | 4 · Auth, middleware, logging, connected frontend | JWT, roles, logs, every page uses the API |
+| ✅ | 5 · Frontend MVC, validations, deployment | client + server validation, Docker deployment |
+
+## AI usage
+
+AI tools were used during development and are documented as required by the course:
+[`AGENTS.md`](AGENTS.md) describes the architecture and rules for AI assistants, and
+[`docs/AI_LOG.md`](docs/AI_LOG.md) lists the tools, the main prompts and the cases where the AI was
+wrong and how they were fixed, for each milestone.
+
+---
+
+<div align="center"><sub>Made by Džejna Sejfić for IT 2001 Web Programming at International Burch University.</sub></div>
