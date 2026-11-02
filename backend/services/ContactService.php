@@ -1,53 +1,55 @@
 <?php
+require_once __DIR__ . '/BaseService.php';
 require_once __DIR__ . '/../dao/ContactDao.php';
 require_once __DIR__ . '/../dao/UserDao.php';
-require_once __DIR__ . '/Validation.php';
 
-class ContactService {
-    private ContactDao $dao;
-    private UserDao $userDao;
+class ContactService extends BaseService
+{
+    private const STATUSES = ['pending', 'accepted', 'blocked'];
 
-    public function __construct() {
-        $this->dao = new ContactDao();
-        $this->userDao = new UserDao();
+    public function __construct()
+    {
+        parent::__construct(new ContactDao(), 'Contact');
     }
 
-    public function get_all(): array {
-        return $this->dao->getAll();
+    public function getForUser(int $userId): array
+    {
+        return $this->dao->getForUser($userId);
     }
 
-    public function get_by_id(int $id): array {
-        $contact = $this->dao->getById($id);
-        if (!$contact) throw new Exception("Contact not found", 404);
-        return $contact;
+    public function create(array $data): array
+    {
+        $userId       = Validator::id($data, 'user_id');
+        $friendUserId = Validator::id($data, 'friend_user_id');
+        $status       = isset($data['status']) ? Validator::oneOf($data, 'status', self::STATUSES) : 'pending';
+
+        if ($userId === $friendUserId) {
+            throw new ApiException('You cannot add yourself as a contact');
+        }
+
+        $users = new UserDao();
+        if ($users->getById($userId) === null || $users->getById($friendUserId) === null) {
+            throw new ApiException('User does not exist');
+        }
+        if ($this->dao->getByUsers($userId, $friendUserId) !== null) {
+            throw new ApiException('This contact already exists', 409);
+        }
+
+        $id = $this->dao->insert([
+            'user_id'        => $userId,
+            'friend_user_id' => $friendUserId,
+            'status'         => $status,
+        ]);
+        return $this->getById($id);
     }
 
-    public function create(array $data): array {
-        $user_id = Validation::int_required($data, 'user_id', 1);
-        $contact_id = Validation::int_required($data, 'contact_id', 1);
-        if ($user_id === $contact_id) throw new Exception("user_id and contact_id cannot be the same", 400);
+    // Only the status of a contact can change (accept / block)
+    public function update(int $id, array $data): array
+    {
+        $this->getById($id);
+        $status = Validator::oneOf($data, 'status', self::STATUSES);
 
-        if (!$this->userDao->getById($user_id) || !$this->userDao->getById($contact_id))
-            throw new Exception("User or contact not found", 400);
-
-        $alias = Validation::str_optional($data, 'alias', 1, 60);
-
-        $id = $this->dao->create(['user_id' => $user_id, 'contact_id' => $contact_id, 'alias' => $alias]);
-        return $this->dao->getById($id);
-    }
-
-    public function update(int $id, array $data): array {
-        $contact = $this->dao->getById($id);
-        if (!$contact) throw new Exception("Contact not found", 404);
-
-        $this->dao->update($id, $data);
-        return $this->dao->getById($id);
-    }
-
-    public function delete(int $id): bool {
-        $contact = $this->dao->getById($id);
-        if (!$contact) throw new Exception("Contact not found", 404);
-        return $this->dao->delete($id);
+        $this->dao->update($id, ['status' => $status]);
+        return $this->getById($id);
     }
 }
-?>

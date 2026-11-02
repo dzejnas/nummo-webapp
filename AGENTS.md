@@ -28,6 +28,7 @@ backend/
   services/     One service per entity — validation and business rules
   routes/       FlightPHP routes, one file per entity — HTTP in/out only
   middleware/   Reusable Flight middleware (auth, roles, logging, errors)
+  utils/        ApiException, Validator, Logger
   logs/         info.log, error.log (not committed)
   docs/         openapi.yaml
   public/       index.php (front controller), docs/ (Swagger UI)
@@ -48,12 +49,19 @@ docs/           ERD, AI_LOG.md
 2. Services signal errors by throwing `ApiException($message, $httpStatus)`. The global error
    handler turns it into a JSON response. Do not echo errors from services or DAOs.
 3. JSON responses: success returns the resource (or a list) directly with 200/201;
-   errors return `{"error": "message"}` with 400/401/403/404/409/500.
-4. Secrets (DB credentials, JWT secret, API URLs/keys) live only in `backend/config/config.php`,
+   errors return `{"error": "message"}` with 400/401/403/404/409/500/503.
+   The error handler in `public/index.php` uses `Flight::jsonHalt()`, because a normal
+   `Flight::json()` is not sent once an exception has been thrown (Flight v3).
+4. Routes use `Flight::register()` to create one service instance per request.
+   Route ids are restricted to numbers: `/api/users/@id:[0-9]+`.
+5. Secrets (DB credentials, JWT secret, API URLs/keys) live only in `backend/config/config.php`,
    which is git-ignored. Add any new setting to `config.example.php` too.
-5. Frontend is a single-page app: views in `frontend/views/*.html` are loaded by
+6. Frontend is a single-page app: views in `frontend/views/*.html` are loaded by
    `frontend/js/router.js`. No full page reloads. No PHP in the frontend.
-6. Money is stored as `DECIMAL(12,2)`. Balances only change inside a DB transaction.
+7. Money is stored as `DECIMAL(12,2)` in EUR. Balances only change inside a DB transaction
+   (`TransactionService::record()` expects the caller to have started one).
+8. External API calls go through `ExchangeRateService` only: always with a timeout, and every
+   failure is logged with `Logger::error()` and returned as a friendly 503.
 
 ## Naming conventions
 
@@ -69,4 +77,7 @@ docs/           ERD, AI_LOG.md
 - Do not add AI attribution lines to commits or PR descriptions.
 - Update `backend/docs/openapi.yaml` whenever an endpoint changes.
 - Never commit `config.php`, logs or `vendor/`.
+- Do not name a PHP class `Config` in `backend/config/`: on macOS/Windows `Config.php` and the
+  secrets file `config.php` are the same file.
+- Do not use `path` as a shell variable name in zsh scripts — it overwrites `$PATH`.
 - Explain any non-obvious code in a short comment.

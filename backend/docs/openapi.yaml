@@ -1,281 +1,717 @@
 openapi: 3.0.3
 info:
   title: Nummo API
-  description: >
-    Official REST API documentation for the **Nummo WebApp (Milestone 3)**.  
-    Developed by Džejna Sejfić — built with FlightPHP, DAO and Service Architecture.
-  version: "1.0.0"
-  contact:
-    name: Nummo Dev Team
-    email: support@nummo.ba
+  version: 3.0.0
+  description: |
+    REST API for Nummo, a peer-to-peer payments app.
 
+    All amounts are in EUR. Errors are returned as `{"error": "message"}` with a matching HTTP status.
+    Authentication (JWT) is added in Milestone 4.
 servers:
   - url: http://localhost:8080
-    description: Local development server
+    description: Local development
 
 tags:
   - name: Users
-    description: Manage application users
   - name: Categories
-    description: Manage spending categories
   - name: Merchants
-    description: Manage merchant information
   - name: Contacts
-    description: Manage user-to-user contacts
   - name: Transactions
-    description: Manage payment transactions
+  - name: Payment requests
+  - name: Exchange rates
+    description: External API — live rates from Frankfurter (frankfurter.dev)
 
 paths:
   /api/users:
     get:
       tags: [Users]
-      summary: Get all users
+      summary: List all users
       responses:
         '200':
-          description: List of all registered users
+          description: Users (password hashes are never returned)
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/User' } }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserCreate' }
+      responses:
+        '201':
+          description: Created user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/users/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      tags: [Users]
+      summary: Get one user
+      responses:
+        '200':
+          description: The user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Users]
+      summary: Update a user (only the fields that are sent change)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserUpdate' }
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Users]
+      summary: Delete a user
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/users/{id}/spending:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      tags: [Users]
+      summary: Money the user spent per category (completed payments)
+      responses:
+        '200':
+          description: Totals per category
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/User'
-    post:
-      tags: [Users]
-      summary: Create a new user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserInput'
-            example:
-              name: "Alice"
-              email: "alice@example.com"
-              password: "secret123"
-      responses:
-        '201':
-          description: User created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-
-  /api/users/{id}:
-    get:
-      tags: [Users]
-      summary: Get user by ID
-      parameters:
-        - $ref: '#/components/parameters/IdParam'
-      responses:
-        '200':
-          description: User details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-    put:
-      tags: [Users]
-      summary: Update user by ID
-      parameters:
-        - $ref: '#/components/parameters/IdParam'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserUpdate'
-      responses:
-        '200': { description: Updated user }
-    delete:
-      tags: [Users]
-      summary: Delete user by ID
-      parameters:
-        - $ref: '#/components/parameters/IdParam'
-      responses:
-        '200': { description: User deleted }
+                  type: object
+                  properties:
+                    category: { type: string, example: Shopping }
+                    total: { type: string, example: '35.90' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/categories:
     get:
       tags: [Categories]
-      summary: Get all categories
+      summary: List categories
       responses:
         '200':
-          description: List of all categories
+          description: Categories sorted by name
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: '#/components/schemas/Category' }
+              schema: { type: array, items: { $ref: '#/components/schemas/Category' } }
     post:
       tags: [Categories]
-      summary: Create a new category
+      summary: Create a category
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/CategoryInput'
+            schema: { $ref: '#/components/schemas/CategoryInput' }
       responses:
-        '201': { description: Category created }
+        '201':
+          description: Created category
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Category' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/categories/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      tags: [Categories]
+      summary: Get one category
+      responses:
+        '200':
+          description: The category
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Category' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Categories]
+      summary: Rename a category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoryInput' }
+      responses:
+        '200':
+          description: Updated category
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Category' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Categories]
+      summary: Delete a category (its merchants and transactions keep existing without a category)
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/merchants:
     get:
       tags: [Merchants]
-      summary: Get all merchants
+      summary: List merchants
       responses:
         '200':
-          description: List of all merchants
+          description: Merchants with their category name
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: '#/components/schemas/Merchant' }
+              schema: { type: array, items: { $ref: '#/components/schemas/Merchant' } }
+    post:
+      tags: [Merchants]
+      summary: Create a merchant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MerchantInput' }
+      responses:
+        '201':
+          description: Created merchant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Merchant' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/merchants/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      tags: [Merchants]
+      summary: Get one merchant
+      responses:
+        '200':
+          description: The merchant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Merchant' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Merchants]
+      summary: Replace a merchant's data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MerchantInput' }
+      responses:
+        '200':
+          description: Updated merchant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Merchant' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Merchants]
+      summary: Delete a merchant
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/contacts:
     get:
       tags: [Contacts]
-      summary: Get all contacts
+      summary: List contacts (all, or one user's)
+      parameters:
+        - name: user_id
+          in: query
+          description: Only contacts of this user
+          schema: { type: integer, example: 2 }
       responses:
         '200':
-          description: List of all user contacts
+          description: Contacts with the friend's name and email
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: '#/components/schemas/Contact' }
+              schema: { type: array, items: { $ref: '#/components/schemas/Contact' } }
     post:
       tags: [Contacts]
-      summary: Create a contact relationship
+      summary: Add a contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContactCreate' }
+      responses:
+        '201':
+          description: Created contact
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Contact' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/contacts/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      tags: [Contacts]
+      summary: Get one contact
+      responses:
+        '200':
+          description: The contact
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Contact' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Contacts]
+      summary: Change a contact's status (accept or block)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ContactInput'
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [pending, accepted, blocked] }
       responses:
-        '201': { description: Contact created }
+        '200':
+          description: Updated contact
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Contact' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Contacts]
+      summary: Remove a contact
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/transactions:
     get:
       tags: [Transactions]
-      summary: Get all transactions
+      summary: List transactions, newest first
+      parameters:
+        - name: user_id
+          in: query
+          description: Only transactions this user sent or received
+          schema: { type: integer, example: 2 }
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, completed, failed] }
+        - name: category_id
+          in: query
+          schema: { type: integer }
       responses:
         '200':
-          description: List of all transactions
+          description: Transactions with sender, receiver, merchant and category names
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: '#/components/schemas/Transaction' }
+              schema: { type: array, items: { $ref: '#/components/schemas/Transaction' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
     post:
       tags: [Transactions]
-      summary: Create a new transaction
+      summary: Send money to a user or pay a merchant
+      description: |
+        Set **either** `receiver_id` or `merchant_id`. A completed payment moves money right away:
+        the sender's balance goes down and the receiver's goes up. The sender needs enough balance.
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/TransactionInput'
-            example:
-              user_id: 4
-              merchant_id: 1
-              category_id: 1
-              amount: 49.99
-              currency: BAM
+            schema: { $ref: '#/components/schemas/TransactionCreate' }
       responses:
-        '201': { description: Transaction created }
+        '201':
+          description: Created transaction
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Transaction' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /api/transactions/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      tags: [Transactions]
+      summary: Get one transaction
+      responses:
+        '200':
+          description: The transaction
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Transaction' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Transactions]
+      summary: Update a pending transaction
+      description: |
+        Only pending transactions can change. Setting `status` to `completed` moves the money.
+        Amount, sender and receiver cannot change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TransactionUpdate' }
+      responses:
+        '200':
+          description: Updated transaction
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Transaction' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Transactions]
+      summary: Delete a pending or failed transaction
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/payment-requests:
+    get:
+      tags: [Payment requests]
+      summary: List payment requests (all, or the ones a user sent or has to pay)
+      parameters:
+        - name: user_id
+          in: query
+          schema: { type: integer, example: 3 }
+      responses:
+        '200':
+          description: Payment requests with requester and payer names
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/PaymentRequest' } }
+    post:
+      tags: [Payment requests]
+      summary: Ask another user for money
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentRequestCreate' }
+      responses:
+        '201':
+          description: Created request (status pending)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /api/payment-requests/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      tags: [Payment requests]
+      summary: Get one payment request
+      responses:
+        '200':
+          description: The payment request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Payment requests]
+      summary: Change, pay or decline a pending request
+      description: |
+        `{"status": "paid"}` creates a completed transaction from the payer to the requester.
+        If the payer does not have enough balance, nothing is saved (400).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentRequestUpdate' }
+      responses:
+        '200':
+          description: Updated request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentRequest' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Payment requests]
+      summary: Delete a payment request
+      responses:
+        '200': { $ref: '#/components/responses/Deleted' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/rates:
+    get:
+      tags: [Exchange rates]
+      summary: Latest exchange rates (from the Frankfurter API)
+      parameters:
+        - name: base
+          in: query
+          schema: { type: string, default: EUR, example: EUR }
+        - name: symbols
+          in: query
+          description: Comma-separated currencies to include
+          schema: { type: string, example: 'USD,GBP,CHF' }
+      responses:
+        '200':
+          description: Rates for 1 unit of the base currency
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Rates' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '503': { $ref: '#/components/responses/ExternalApiDown' }
+
+  /api/rates/convert:
+    get:
+      tags: [Exchange rates]
+      summary: Convert an amount between two currencies
+      parameters:
+        - { name: amount, in: query, required: true, schema: { type: number, example: 100 } }
+        - { name: from, in: query, required: true, schema: { type: string, example: EUR } }
+        - { name: to, in: query, required: true, schema: { type: string, example: USD } }
+      responses:
+        '200':
+          description: Converted amount
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Conversion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '503': { $ref: '#/components/responses/ExternalApiDown' }
+
+  /api/rates/currencies:
+    get:
+      tags: [Exchange rates]
+      summary: Currencies supported by the converter
+      responses:
+        '200':
+          description: Currency code → name
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: string }
+                example: { EUR: Euro, USD: United States Dollar }
+        '503': { $ref: '#/components/responses/ExternalApiDown' }
 
 components:
   parameters:
-    IdParam:
+    Id:
       name: id
       in: path
       required: true
-      schema: { type: integer }
-      description: Unique numeric identifier
+      schema: { type: integer, minimum: 1, example: 1 }
+
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: 'amount must be a positive number with at most 2 decimals' }
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: User not found }
+    Conflict:
+      description: Conflicts with existing data
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: Email is already in use }
+    ServerError:
+      description: Unexpected error (details are only in the error log)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: Something went wrong. Please try again later. }
+    ExternalApiDown:
+      description: The exchange rate API is unavailable or timed out
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: Exchange rates are not available right now. Please try again later. }
+    Deleted:
+      description: Deleted
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: Deleted }
 
   schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+
     User:
       type: object
       properties:
-        id: { type: integer, example: 1 }
-        name: { type: string, example: "Alice" }
-        email: { type: string, example: "alice@example.com" }
-        role: { type: string, example: "user" }
-        created_at: { type: string, example: "2025-11-16 16:00:00" }
-
-    UserInput:
+        id: { type: integer, example: 2 }
+        name: { type: string, example: Amina Hodzic }
+        email: { type: string, format: email, example: amina@nummo.com }
+        role: { type: string, enum: [user, admin] }
+        balance: { type: string, example: '250.00' }
+        currency: { type: string, example: EUR, description: Display currency }
+        created_at: { type: string, example: '2026-11-02 14:05:12' }
+    UserCreate:
       type: object
       required: [name, email, password]
       properties:
-        name: { type: string }
-        email: { type: string }
-        password: { type: string }
-
+        name: { type: string, minLength: 2, maxLength: 100, example: Lejla Kovac }
+        email: { type: string, format: email, example: lejla@nummo.com }
+        password: { type: string, minLength: 6, example: secret123 }
+        role: { type: string, enum: [user, admin], default: user }
+        currency: { type: string, example: EUR, default: EUR }
+        balance: { type: number, minimum: 0, default: 0 }
     UserUpdate:
       type: object
       properties:
-        name: { type: string }
-        email: { type: string }
-        password: { type: string }
-        role: { type: string }
+        name: { type: string, minLength: 2, maxLength: 100 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+        role: { type: string, enum: [user, admin] }
+        currency: { type: string, example: USD }
+        balance: { type: number, minimum: 0 }
 
     Category:
       type: object
       properties:
         id: { type: integer, example: 1 }
-        name: { type: string, example: "Food" }
-        description: { type: string, example: "Groceries & dining" }
-
+        name: { type: string, example: Food }
     CategoryInput:
       type: object
       required: [name]
       properties:
-        name: { type: string }
+        name: { type: string, minLength: 2, maxLength: 60, example: Travel }
 
     Merchant:
       type: object
       properties:
         id: { type: integer, example: 1 }
-        name: { type: string, example: "DM Drogerie" }
-        category_id: { type: integer, example: 1 }
-        description: { type: string, example: "Retail & Health" }
+        name: { type: string, example: Bingo Market }
+        category_id: { type: integer, nullable: true, example: 3 }
+        category_name: { type: string, nullable: true, example: Shopping }
+        contact_email: { type: string, nullable: true, example: info@bingo.example }
+        created_at: { type: string }
+    MerchantInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120, example: Konzum }
+        category_id: { type: integer, nullable: true, example: 3 }
+        contact_email: { type: string, format: email, nullable: true, example: info@konzum.example }
 
     Contact:
       type: object
       properties:
-        id: { type: integer }
-        user_id: { type: integer }
-        contact_id: { type: integer }
-        alias: { type: string, example: "Mof" }
-
-    ContactInput:
+        id: { type: integer, example: 1 }
+        user_id: { type: integer, example: 2 }
+        friend_user_id: { type: integer, example: 3 }
+        friend_name: { type: string, example: Tarik Begic }
+        friend_email: { type: string, example: tarik@nummo.com }
+        status: { type: string, enum: [pending, accepted, blocked] }
+        created_at: { type: string }
+    ContactCreate:
       type: object
-      required: [user_id, contact_id]
+      required: [user_id, friend_user_id]
       properties:
-        user_id: { type: integer }
-        contact_id: { type: integer }
-        alias: { type: string }
+        user_id: { type: integer, example: 1 }
+        friend_user_id: { type: integer, example: 2 }
+        status: { type: string, enum: [pending, accepted, blocked], default: pending }
 
     Transaction:
       type: object
       properties:
-        id: { type: integer }
-        user_id: { type: integer }
-        merchant_id: { type: integer }
-        category_id: { type: integer }
-        amount: { type: number }
-        currency: { type: string }
-        note: { type: string, nullable: true }
-        status: { type: string, example: "PENDING" }
-        created_at: { type: string, example: "2025-11-16 17:30:00" }
-
-    TransactionInput:
+        id: { type: integer, example: 1 }
+        sender_id: { type: integer, example: 2 }
+        sender_name: { type: string, example: Amina Hodzic }
+        receiver_id: { type: integer, nullable: true, example: 3 }
+        receiver_name: { type: string, nullable: true, example: Tarik Begic }
+        merchant_id: { type: integer, nullable: true }
+        merchant_name: { type: string, nullable: true }
+        category_id: { type: integer, nullable: true, example: 1 }
+        category_name: { type: string, nullable: true, example: Food }
+        amount: { type: string, example: '12.50' }
+        currency: { type: string, example: EUR }
+        note: { type: string, nullable: true, example: Lunch }
+        status: { type: string, enum: [pending, completed, failed] }
+        created_at: { type: string }
+    TransactionCreate:
       type: object
-      required: [user_id, merchant_id, category_id, amount, currency]
+      required: [sender_id, amount]
       properties:
-        user_id: { type: integer }
-        merchant_id: { type: integer }
-        category_id: { type: integer }
-        amount: { type: number }
-        currency: { type: string }
-        note: { type: string, nullable: true }
+        sender_id: { type: integer, example: 2 }
+        receiver_id: { type: integer, example: 3, description: Set this to pay a user }
+        merchant_id: { type: integer, description: Set this instead to pay a merchant }
+        category_id: { type: integer, example: 1 }
+        amount: { type: number, minimum: 0.01, example: 10 }
+        note: { type: string, maxLength: 255, example: Coffee }
+        status: { type: string, enum: [completed, pending], default: completed }
+    TransactionUpdate:
+      type: object
+      properties:
+        note: { type: string, maxLength: 255 }
+        category_id: { type: integer, nullable: true }
+        status: { type: string, enum: [pending, completed, failed] }
+
+    PaymentRequest:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        requester_id: { type: integer, example: 2 }
+        requester_name: { type: string, example: Amina Hodzic }
+        payer_id: { type: integer, example: 3 }
+        payer_name: { type: string, example: Tarik Begic }
+        amount: { type: string, example: '15.00' }
+        note: { type: string, nullable: true, example: Pizza night }
+        status: { type: string, enum: [pending, paid, declined] }
+        created_at: { type: string }
+    PaymentRequestCreate:
+      type: object
+      required: [requester_id, payer_id, amount]
+      properties:
+        requester_id: { type: integer, example: 3 }
+        payer_id: { type: integer, example: 2 }
+        amount: { type: number, minimum: 0.01, example: 7.5 }
+        note: { type: string, maxLength: 255, example: Cinema }
+    PaymentRequestUpdate:
+      type: object
+      properties:
+        amount: { type: number, minimum: 0.01 }
+        note: { type: string, maxLength: 255 }
+        status: { type: string, enum: [pending, paid, declined] }
+
+    Rates:
+      type: object
+      properties:
+        base: { type: string, example: EUR }
+        date: { type: string, example: '2026-11-02' }
+        rates:
+          type: object
+          additionalProperties: { type: number }
+          example: { USD: 1.1216, GBP: 0.8358 }
+    Conversion:
+      type: object
+      properties:
+        amount: { type: number, example: 100 }
+        from: { type: string, example: EUR }
+        to: { type: string, example: USD }
+        rate: { type: number, example: 1.1216 }
+        result: { type: number, example: 112.16 }
+        date: { type: string, example: '2026-11-02' }

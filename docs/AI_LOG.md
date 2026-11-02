@@ -45,8 +45,9 @@ ran it locally, and committed the result myself.
 - Writing `backend/tests/dao_check.php`, which runs CRUD on every DAO inside a rolled-back transaction.
 
 **Most important prompts**
-- "Fix milestone 2 so it matches the requirements: MySQL schema with at least 5 entities and
-  sample data, DAO layer with a base DAO, credentials from a config file."
+- "Based on this [requirements PDF], can we fix milestone 1 and milestone 2 and continue until
+  the end of milestone 3?" — the AI then planned the schema and DAO layer from the Milestone 2
+  requirements (5+ entities with sample data, base DAO, credentials from a config file).
 
 **Cases where the AI was wrong or produced poor code**
 1. *CHECK constraint MySQL rejects.* The AI first wanted
@@ -61,3 +62,41 @@ ran it locally, and committed the result myself.
 **What I checked myself**
 - Imported `sql/nummo_db.sql` into a clean MySQL 8.4 database.
 - `php backend/tests/dao_check.php` — all 30 checks pass.
+
+## Milestone 3 — Services, routes, OpenAPI, external API
+
+**What the AI was used for**
+- `utils/`: `ApiException` (error + HTTP status), `Validator` (input checks), `Logger` (info/error log).
+- One service per entity on top of a `BaseService`, with the business rules: payments go to a user
+  or a merchant, balances move inside a DB transaction, insufficient balance is rejected, completed
+  payments cannot be edited or deleted, paying a payment request creates a transaction.
+- FlightPHP routes for full CRUD on all six entities, a global error handler and JSON 404.
+- `ExchangeRateService` for the Frankfurter API (timeout, error logging, friendly 503) and the
+  `/api/rates` endpoints; the dashboard currency converter now calls the backend.
+- `backend/docs/openapi.yaml` (34 operations) and the Swagger UI page at `/docs/`.
+
+**Most important prompts**
+- "Please make sure we push all the milestones today with the code."
+- The AI worked from the Milestone 3 requirements in the PDF: a service per entity, CRUD routes
+  with correct status codes, OpenAPI + Swagger, and an external API with timeout and error handling.
+
+**Cases where the AI was wrong or produced poor code**
+1. *Error responses were empty.* The first error handler used `Flight::json()`. Every error
+   (404, 400, 409) came back as an empty `200` response. Testing with curl showed it; reading
+   `Engine.php` in Flight v3 explained why: the response is only sent when a route finishes
+   normally. The fix was `Flight::jsonHalt()`, which sends the response immediately.
+2. *Swagger page showed API JSON.* With PHP's built-in server, the front controller only let real
+   *files* through, so `/docs/` (a folder) was routed to Flight and returned the API root JSON.
+   I saw it in the browser and changed the check to also allow folders.
+3. *Broken shell script.* While generating route files, the AI used `path` as a loop variable in
+   zsh, which overwrote `$PATH`, so `cat` and `ls` stopped working halfway through. The files
+   were regenerated with a different variable name and checked.
+
+**What I checked myself**
+- Called every endpoint with curl: success cases, 400 validation errors, 404, 409, and that
+  balances change correctly (and are rolled back when a payment request cannot be paid).
+- Stopped the database: the API returns a generic 500 and the real error is in `error.log`.
+- Pointed the rates API at an unreachable address: after the 2-second timeout the API returns 503,
+  the failure is in `error.log`, and the other endpoints keep working.
+- A script compared the routes in `routes/*.php` with `openapi.yaml`: all 34 are documented.
+- Swagger UI loads with no spec errors; the dashboard converter shows live rates.
