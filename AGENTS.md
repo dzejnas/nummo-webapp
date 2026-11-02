@@ -1,0 +1,72 @@
+# AGENTS.md — Nummo
+
+Context for AI coding assistants working in this repository. Read this before changing code.
+
+## Project
+
+Nummo is a peer-to-peer payments web app (like Venmo). Users keep a balance, add contacts,
+send money to contacts or merchants, request money from other users, and see their spending
+by category. Admins manage users, merchants and categories. The dashboard has a currency
+converter that uses live exchange rates from the Frankfurter API.
+
+This is a university project (IBU, IT 2001 Web Programming). The code must stay simple enough
+that the author can explain every line at an oral defense.
+
+## Tech stack
+
+- Backend: PHP 8.1+, FlightPHP 3 (`flightphp/core`), PDO + MySQL 8. Composer for dependencies.
+- Frontend: plain HTML, CSS, JavaScript; Bootstrap 5, Bootstrap Icons, Chart.js (CDN).
+- API docs: OpenAPI 3 (`backend/docs/openapi.yaml`) shown with Swagger UI.
+- External API: Frankfurter (`https://api.frankfurter.dev/v1`) for exchange rates.
+
+## Folder structure
+
+```
+backend/
+  config/       Config.php (reads config.php), Database.php (PDO), config.example.php
+  dao/          BaseDao + one DAO per table — the only place with SQL
+  services/     One service per entity — validation and business rules
+  routes/       FlightPHP routes, one file per entity — HTTP in/out only
+  middleware/   Reusable Flight middleware (auth, roles, logging, errors)
+  logs/         info.log, error.log (not committed)
+  docs/         openapi.yaml
+  public/       index.php (front controller), docs/ (Swagger UI)
+  tests/        Simple CLI scripts that check the DAO/service layers
+frontend/
+  index.html    SPA shell (navbar + <main id="app">)
+  css/  js/  views/  assets/
+sql/            nummo_db.sql — schema + sample data
+docs/           ERD, AI_LOG.md
+```
+
+## Architecture rules
+
+1. Request flow is always: **route → service → DAO → database**.
+   - Routes never touch a DAO or SQL. They read the request, call a service, return JSON.
+   - Services are the only layer that calls DAOs. All validation and business rules live here.
+   - DAOs only run SQL. Every query uses PDO prepared statements; never put user input into SQL strings.
+2. Services signal errors by throwing `ApiException($message, $httpStatus)`. The global error
+   handler turns it into a JSON response. Do not echo errors from services or DAOs.
+3. JSON responses: success returns the resource (or a list) directly with 200/201;
+   errors return `{"error": "message"}` with 400/401/403/404/409/500.
+4. Secrets (DB credentials, JWT secret, API URLs/keys) live only in `backend/config/config.php`,
+   which is git-ignored. Add any new setting to `config.example.php` too.
+5. Frontend is a single-page app: views in `frontend/views/*.html` are loaded by
+   `frontend/js/router.js`. No full page reloads. No PHP in the frontend.
+6. Money is stored as `DECIMAL(12,2)`. Balances only change inside a DB transaction.
+
+## Naming conventions
+
+- PHP classes: `PascalCase`, file name = class name (`UserDao.php`, `UserService.php`).
+  Linux servers are case-sensitive, so these must match exactly.
+- PHP methods and variables: `camelCase`. Database tables and columns: `snake_case`, plural tables.
+- Route files: lowercase plural (`routes/users.php`). URLs: `/api/<plural>` and `/api/<plural>/{id}`.
+- JS: `camelCase` functions, view files named after the route (`#contacts` → `views/contacts.html`).
+
+## Rules for the AI
+
+- Keep changes small and match the existing style. Do not add frameworks or build tools.
+- Do not add AI attribution lines to commits or PR descriptions.
+- Update `backend/docs/openapi.yaml` whenever an endpoint changes.
+- Never commit `config.php`, logs or `vendor/`.
+- Explain any non-obvious code in a short comment.

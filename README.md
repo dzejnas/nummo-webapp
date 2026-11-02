@@ -1,197 +1,66 @@
-# **Nummo WebApp – Backend (Milestone 3)**
+# Nummo — Peer-to-Peer Payments
 
-### *FlightPHP • MySQL • REST API • DAO/Service Architecture • Swagger Documentation*
+Nummo is a single-page web app for sending and requesting money between friends and paying
+merchants. Users keep a balance, manage contacts, see their spending by category, and convert
+amounts between currencies using live exchange rates. Admins manage users, merchants and categories.
 
-This repository contains the backend implementation for **Nummo**, a peer-to-peer payment platform.
-The project follows a clean **DAO → Service → Route** architecture, includes full CRUD operations for all core entities, and provides a fully documented **OpenAPI 3.0** specification accessible through Swagger UI.
+IBU · IT 2001 Web Programming · Džejna Sejfić
 
----
+## Tech stack
 
-## 🚀 **Features Implemented**
+| Layer | Technology |
+|---|---|
+| Frontend | HTML, CSS, JavaScript, Bootstrap 5, Chart.js — single-page app |
+| Backend | PHP 8.1+, FlightPHP 3, PDO |
+| Database | MySQL 8 |
+| API docs | OpenAPI 3 + Swagger UI |
+| External API | [Frankfurter](https://frankfurter.dev) exchange rates |
 
-### **✔️ CRUD Endpoints**
+## Entities and relationships
 
-* **Users**
-* **Contacts**
-* **Categories**
-* **Merchants**
-* **Transactions**
+Six tables (full diagram in [docs/ERD.md](docs/ERD.md)):
 
-### **✔️ Architecture**
+- **users** — account, role (`user` / `admin`), balance and main currency
+- **categories** — spending categories (Food, Transport, …)
+- **merchants** — shops a user can pay; each belongs to a category
+- **contacts** — links a user to another user (`pending`, `accepted`, `blocked`)
+- **transactions** — a payment from a sender to a user **or** a merchant, with a category
+- **payment_requests** — one user asks another user to pay an amount
 
-* DAO layer (database queries)
-* Service layer (validation + business logic)
-* Routes layer (REST endpoints using FlightPHP)
-* Centralized error handling
+## Roles
 
-### **✔️ OpenAPI Documentation**
+| Role | Can do |
+|---|---|
+| `user` | Manage own profile, contacts, transactions and payment requests; view merchants and categories |
+| `admin` | Everything a user can, plus CRUD on users, merchants and categories |
 
-* `GET /api/docs` → OpenAPI YAML
-* `GET /docs` → Interactive Swagger UI
+## External API
 
-### **✔️ Development Enhancements**
+The dashboard's **currency converter** uses the Frankfurter API (European Central Bank rates)
+to show how much an amount is worth in another currency.
 
-* CORS enabled
-* JSON response standardization
-* Validation layer
-* Clean routing structure
-* Composer autoloading
-
----
-
-## 📁 **Project Structure**
+## Project structure
 
 ```
-backend/
-│
-├── config/
-│   └── Database.php
-│
-├── dao/
-│   ├── BaseDao.php
-│   ├── UserDao.php
-│   ├── CategoryDao.php
-│   ├── MerchantDao.php
-│   ├── ContactDao.php
-│   └── TransactionDao.php
-│
-├── services/
-│   ├── UserService.php
-│   ├── CategoryService.php
-│   ├── MerchantService.php
-│   ├── ContactService.php
-│   ├── TransactionService.php
-│   └── Validation.php
-│
-├── routes/
-│   ├── users.php
-│   ├── categories.php
-│   ├── merchants.php
-│   ├── transactions.php
-│   ├── contacts.php
-│   └── docs.php
-│
-├── public/
-│   ├── index.php           # FlightPHP entrypoint
-│   └── docs/
-│       └── index.html      # Swagger UI (CDN version)
-│
-├── docs/
-│   └── openapi.yaml        # OpenAPI 3.0 spec
-│
-└── vendor/                 # Composer dependencies
+backend/    FlightPHP REST API (config, dao, services, routes, middleware, logs, docs, public)
+frontend/   SPA (index.html, css, js, views, assets)
+sql/        database schema + sample data
+docs/       ERD and AI usage log
 ```
 
----
-
-## 🛠️ **How to Run the Backend**
-
-### **1️⃣ Install dependencies**
+## Running the frontend locally
 
 ```bash
-cd backend
-composer install
+cd frontend
+php -S localhost:8000
 ```
 
-### **2️⃣ Start the development server**
+Open http://localhost:8000.
 
-```bash
-php -S localhost:8000 -t public
-```
+## Status
 
-### **3️⃣ API base URL**
-
-```
-http://localhost:8000
-```
-
----
-
-## 📚 **API Documentation**
-
-### **OpenAPI YAML**
-
-```
-http://localhost:8000/api/docs
-```
-
-### **Swagger UI (Interactive Docs)**
-
-```
-http://localhost:8000/docs
-```
-
-Includes full documentation for:
-
-* Users
-* Contacts
-* Categories
-* Merchants
-* Transactions
-
----
-
-## 🧪 **Testing the API**
-
-### All Users
-
-```bash
-curl http://localhost:8000/api/users
-```
-
-### All Categories
-
-```bash
-curl http://localhost:8000/api/categories
-```
-
-### All Merchants
-
-```bash
-curl http://localhost:8000/api/merchants
-```
-
-### YAML Output
-
-```bash
-curl http://localhost:8000/api/docs
-```
-
----
-
-## 🗄️ **Database**
-
-The backend uses **MySQL** and includes tables for:
-
-* `users`
-* `contacts`
-* `categories`
-* `merchants`
-* `transactions`
-
-Configure connection in:
-
-```
-backend/config/Database.php
-```
-
----
-
-## 🧰 **Technologies Used**
-
-* PHP 8+
-* FlightPHP Framework
-* MySQL
-* Composer (autoloading)
-* OpenAPI 3.0
-* Swagger UI via CDN
-
----
-
-## 👩‍💻 **Author**
-
-**Džejna Sejfić**
-International Burch University
-
-Web Programming — *Milestone 3 Submission*
-
+- [x] Milestone 1 — project structure, static SPA, ERD
+- [ ] Milestone 2 — database and DAO layer
+- [ ] Milestone 3 — services, routes, OpenAPI, external API
+- [ ] Milestone 4 — authentication, middleware, logging, connected frontend
+- [ ] Milestone 5 — frontend MVC, validations, deployment

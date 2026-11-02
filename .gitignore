@@ -1,0 +1,13 @@
+# Secrets (copy backend/config/config.example.php to config.php)
+backend/config/config.php
+
+# Logs
+backend/logs/*.log
+
+# Dependencies
+backend/vendor/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
