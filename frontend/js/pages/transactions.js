@@ -10,6 +10,8 @@ Pages.transactions = {
     document.getElementById('transaction-form').addEventListener('submit', (event) => this.create(event));
     document.getElementById('transaction-edit-form').addEventListener('submit', (event) => this.saveEdit(event));
     document.getElementById('transactions-table').addEventListener('click', (event) => this.handleAction(event));
+    Validation.clearOnInput(document.getElementById('transaction-form'));
+    Validation.clearOnInput(document.getElementById('transaction-edit-form'));
 
     try {
       this.categories = await CategoryService.getAll();
@@ -56,7 +58,7 @@ Pages.transactions = {
 
   async openNew() {
     const form = document.getElementById('transaction-form');
-    form.reset();
+    Validation.reset(form);
     this.switchType('user');
     try {
       const [contacts, merchants] = await Promise.all([ContactService.getAll(), MerchantService.getAll()]);
@@ -82,6 +84,7 @@ Pages.transactions = {
   async create(event) {
     event.preventDefault();
     const form = event.target;
+    if (!Validation.check(form)) return;
     const data = UI.formData(form);
     const type = document.getElementById('tx-type').value;
 
@@ -135,6 +138,7 @@ Pages.transactions = {
   async saveEdit(event) {
     event.preventDefault();
     const form = event.target;
+    if (!Validation.check(form)) return;
     const data = UI.formData(form);
     try {
       await TransactionService.update(data.id, { category_id: data.category_id || null, note: data.note });

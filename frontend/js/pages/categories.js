@@ -6,6 +6,7 @@ Pages.categories = {
     document.getElementById('new-category-button').addEventListener('click', () => this.openForm(null));
     document.getElementById('category-form').addEventListener('submit', (event) => this.save(event));
     document.getElementById('categories-table').addEventListener('click', (event) => this.handleAction(event));
+    Validation.clearOnInput(document.getElementById('category-form'));
     this.load();
   },
 
@@ -30,7 +31,7 @@ Pages.categories = {
 
   openForm(category) {
     const form = document.getElementById('category-form');
-    form.reset();
+    Validation.reset(form);
     form.elements.id.value = category ? category.id : '';
     form.elements.name.value = category ? category.name : '';
     document.getElementById('category-modal-title').textContent = category ? 'Rename category' : 'Add category';
@@ -40,6 +41,7 @@ Pages.categories = {
   async save(event) {
     event.preventDefault();
     const form = event.target;
+    if (!Validation.check(form)) return;
     const data = UI.formData(form);
     try {
       await UI.busy(form.querySelector('[type=submit]'), () => data.id

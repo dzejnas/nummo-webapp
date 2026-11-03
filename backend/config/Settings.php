@@ -1,6 +1,8 @@
 <?php
-// Reads settings from config/config.php (which is not committed to Git).
-// Usage: Settings::get('db'), Settings::get('jwt_secret')
+// Reads the settings. Usage: Settings::get('db'), Settings::get('jwt_secret')
+// - Local development: from config/config.php (not committed to Git)
+// - Deployed server: from environment variables, if there is no config.php
+//   (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, JWT_SECRET, RATES_API_URL, RATES_API_TIMEOUT)
 
 class Settings
 {
@@ -10,11 +12,27 @@ class Settings
     {
         if (self::$values === null) {
             $file = __DIR__ . '/config.php';
-            if (!file_exists($file)) {
-                throw new RuntimeException('Missing backend/config/config.php - copy config.example.php and fill it in');
-            }
-            self::$values = require $file;
+            self::$values = file_exists($file) ? require $file : self::fromEnvironment();
         }
         return self::$values[$key] ?? null;
+    }
+
+    private static function fromEnvironment(): array
+    {
+        if (!getenv('DB_HOST') || !getenv('JWT_SECRET')) {
+            throw new RuntimeException('No config.php and no DB_HOST/JWT_SECRET environment variables');
+        }
+        return [
+            'db' => [
+                'host' => getenv('DB_HOST'),
+                'port' => (int) (getenv('DB_PORT') ?: 3306),
+                'name' => getenv('DB_NAME') ?: 'nummo_db',
+                'user' => getenv('DB_USER'),
+                'pass' => getenv('DB_PASS'),
+            ],
+            'jwt_secret'        => getenv('JWT_SECRET'),
+            'rates_api_url'     => getenv('RATES_API_URL') ?: 'https://api.frankfurter.dev/v1',
+            'rates_api_timeout' => (int) (getenv('RATES_API_TIMEOUT') ?: 5),
+        ];
     }
 }

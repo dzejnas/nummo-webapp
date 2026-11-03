@@ -2,8 +2,10 @@
 Pages.login = {
   init() {
     const form = document.getElementById('login-form');
+    Validation.clearOnInput(form);
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
+      if (!Validation.check(form)) return;
       const data = UI.formData(form);
       try {
         const user = await UI.busy(form.querySelector('[type=submit]'), () => AuthService.login(data.email, data.password));
@@ -19,8 +21,10 @@ Pages.login = {
 Pages.register = {
   init() {
     const form = document.getElementById('register-form');
+    Validation.clearOnInput(form);
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
+      if (!Validation.check(form)) return;
       try {
         const user = await UI.busy(form.querySelector('[type=submit]'), () => AuthService.register(UI.formData(form)));
         UI.toast(`Welcome to Nummo, ${user.name}!`);

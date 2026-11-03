@@ -14,8 +14,8 @@ info:
 
     All amounts are in EUR. Errors are returned as `{"error": "message"}` with a matching HTTP status.
 servers:
-- url: http://localhost:8080
-  description: Local development
+- url: /
+  description: The server this page is served from
 security:
 - bearerAuth: []
 tags:

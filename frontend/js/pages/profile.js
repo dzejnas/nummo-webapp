@@ -3,6 +3,7 @@ Pages.profile = {
   async init() {
     const form = document.getElementById('profile-form');
     form.addEventListener('submit', (event) => this.save(event));
+    Validation.clearOnInput(form);
 
     try {
       const profile = await ProfileService.get();
@@ -26,6 +27,7 @@ Pages.profile = {
   async save(event) {
     event.preventDefault();
     const form = event.target;
+    if (!Validation.check(form)) return;
     const data = UI.formData(form);
     if (data.password === '') delete data.password;
     try {

@@ -3,6 +3,7 @@ Pages.contacts = {
   init() {
     document.getElementById('contact-form').addEventListener('submit', (event) => this.add(event));
     document.getElementById('contacts-table').addEventListener('click', (event) => this.handleAction(event));
+    Validation.clearOnInput(document.getElementById('contact-form'));
     this.load();
   },
 
@@ -32,10 +33,11 @@ Pages.contacts = {
   async add(event) {
     event.preventDefault();
     const form = event.target;
+    if (!Validation.check(form)) return;
     try {
       await UI.busy(form.querySelector('[type=submit]'), () => ContactService.addByEmail(form.elements.email.value));
       UI.modal('contact-modal').hide();
-      form.reset();
+      Validation.reset(form);
       UI.toast('Contact added');
       this.load();
     } catch (error) {

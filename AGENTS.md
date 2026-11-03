@@ -42,6 +42,8 @@ frontend/
   views/        HTML templates   css/   assets/
 sql/            nummo_db.sql — schema + sample data
 docs/           ERD, AI_LOG.md
+Dockerfile      production image (Apache + PHP): frontend at /, API at /api, Swagger at /docs/
+deploy/         apache.conf, api.php (entry for /api), start.sh (uses $PORT)
 ```
 
 ## Architecture rules
@@ -62,10 +64,14 @@ docs/           ERD, AI_LOG.md
    The logged-in user is `Flight::get('user')` (id, name, email, role from the JWT); routes pass
    it to services, and services check ownership with `assertCanAccess()` (403).
 5. Secrets (DB credentials, JWT secret, API URLs/keys) live only in `backend/config/config.php`,
-   which is git-ignored. Add any new setting to `config.example.php` too.
+   which is git-ignored, or in environment variables on the server (`Settings::fromEnvironment()`).
+   Add any new setting to `config.example.php` and to the environment list in the README.
 6. Frontend is a single-page app: views in `frontend/views/*.html` are loaded by
    `frontend/js/router.js`. No full page reloads. No PHP in the frontend.
    Put user data into HTML only through `UI.escape()`.
+   Frontend MVC: views are HTML only; controllers in `js/pages/` never call `fetch()` or `Api`
+   directly — they use the service objects in `js/services/`.
+   Every form calls `Validation.check(form)` before sending; the backend validates again.
 7. Money is stored as `DECIMAL(12,2)` in EUR. Balances only change inside a DB transaction
    (`TransactionService::record()` expects the caller to have started one).
 8. External API calls go through `ExchangeRateService` only: always with a timeout, and every
