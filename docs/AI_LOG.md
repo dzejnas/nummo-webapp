@@ -32,3 +32,32 @@ ran it locally, and committed the result myself.
 
 **What I checked myself**
 - Every route in the navbar opens its view without a page reload, and the layout works at phone width.
+
+## Milestone 2 — Database and DAO layer
+
+**What the AI was used for**
+- Rewriting `sql/nummo_db.sql`: the old file inserted into a `transactions` table it never
+  created and had no sample users. The new file has 6 tables with PKs/FKs and sample data
+  (test passwords hashed with PHP `password_hash`).
+- Creating `config.example.php`, `Settings.php` and `Database.php` so credentials are read from the
+  git-ignored `config.php` instead of being hard-coded.
+- Rewriting `BaseDao` (column whitelist, prepared statements, DB transactions) and one DAO per table.
+- Writing `backend/tests/dao_check.php`, which runs CRUD on every DAO inside a rolled-back transaction.
+
+**Most important prompts**
+- "Fix milestone 2 so it matches the requirements: MySQL schema with at least 5 entities and
+  sample data, DAO layer with a base DAO, credentials from a config file."
+
+**Cases where the AI was wrong or produced poor code**
+1. *CHECK constraint MySQL rejects.* The AI first wanted
+   `CHECK (receiver_id IS NOT NULL OR merchant_id IS NOT NULL)` on `transactions`. I tested it on
+   MySQL 8.4 and it fails with error 3823, because `merchant_id` has an `ON DELETE SET NULL`
+   foreign key and MySQL does not allow such columns in CHECK constraints. The rule
+   "a payment goes to a user or a merchant, not both" now lives in `TransactionService`.
+2. *File name clash on macOS.* The AI named the settings class `Config.php` in the same folder
+   as the secrets file `config.php`. macOS file names are case-insensitive, so writing one file
+   overwrote the other. I renamed the class to `Settings` (`Settings.php`).
+
+**What I checked myself**
+- Imported `sql/nummo_db.sql` into a clean MySQL 8.4 database.
+- `php backend/tests/dao_check.php` — all 30 checks pass.

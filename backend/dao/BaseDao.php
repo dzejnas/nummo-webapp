@@ -1,90 +1,92 @@
 <?php
 require_once __DIR__ . '/../config/Database.php';
 
-class BaseDao {
-    protected \PDO $db;
+// Reusable CRUD methods shared by every DAO.
+// Each child DAO passes its table name and the list of columns that may be inserted/updated.
+// Only those columns are ever put into SQL, so user input can never choose a column name.
+abstract class BaseDao
+{
+    protected PDO $db;
     protected string $table;
+    protected array $columns;
 
-    public function __construct(string $table) {
-        $this->db = Database::getConnection();
-        $this->table = $table;
+    public function __construct(string $table, array $columns)
+    {
+        $this->db      = Database::getConnection();
+        $this->table   = $table;
+        $this->columns = $columns;
     }
 
-    // ====================================================
-    // 🔹 Generic: Fetch record by ID
-    // ====================================================
-    public function getById(int $id): ?array {
-        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = :id LIMIT 1");
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    public function getAll(): array
+    {
+        return $this->query("SELECT * FROM {$this->table} ORDER BY id");
     }
 
-    // ====================================================
-    // 🔹 Generic: Fetch all records (with optional limit & offset)
-    // ====================================================
-    public function getAll(int $limit = 1000, int $offset = 0): array {
-        $stmt = $this->db->prepare("SELECT * FROM {$this->table} LIMIT :limit OFFSET :offset");
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    public function getById(int $id): ?array
+    {
+        return $this->queryOne("SELECT * FROM {$this->table} WHERE id = :id", ['id' => $id]);
     }
 
-    // ====================================================
-    // 🔹 Generic: Delete by ID
-    // ====================================================
-    public function delete(int $id): bool {
+    // Returns the id of the new row
+    public function insert(array $data): int
+    {
+        $data = $this->onlyAllowedColumns($data);
+        $columns      = implode(', ', array_keys($data));
+        $placeholders = ':' . implode(', :', array_keys($data));
+
+        $stmt = $this->db->prepare("INSERT INTO {$this->table} ($columns) VALUES ($placeholders)");
+        $stmt->execute($data);
+        return (int) $this->db->lastInsertId();
+    }
+
+    // Updates only the columns present in $data
+    public function update(int $id, array $data): void
+    {
+        $data = $this->onlyAllowedColumns($data);
+        if (empty($data)) {
+            return;
+        }
+
+        $set = [];
+        foreach (array_keys($data) as $column) {
+            $set[] = "$column = :$column";
+        }
+
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET " . implode(', ', $set) . " WHERE id = :id");
+        $stmt->execute($data + ['id' => $id]);
+    }
+
+    // Returns true if a row was deleted
+    public function delete(int $id): bool
+    {
         $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = :id");
-        return $stmt->execute([':id' => $id]);
+        $stmt->execute(['id' => $id]);
+        return $stmt->rowCount() > 0;
     }
 
-    // ====================================================
-    // 🔹 Generic: Insert (dynamic columns)
-    // ====================================================
-    public function insert(array $data): int {
-        $columns = array_keys($data);
-        $placeholders = array_map(fn($col) => ":$col", $columns);
-        $sql = sprintf(
-            "INSERT INTO %s (%s) VALUES (%s)",
-            $this->table,
-            implode(',', $columns),
-            implode(',', $placeholders)
-        );
+    // Database transactions: used when several queries must succeed or fail together
+    public function beginTransaction(): void { $this->db->beginTransaction(); }
+    public function commit(): void           { $this->db->commit(); }
+    public function rollBack(): void         { $this->db->rollBack(); }
 
+    // ---- helpers for child DAOs ----
+
+    protected function query(string $sql, array $params = []): array
+    {
         $stmt = $this->db->prepare($sql);
-        foreach ($data as $key => $val) {
-            $stmt->bindValue(":$key", $val);
-        }
-        $stmt->execute();
-        return (int)$this->db->lastInsertId();
+        $stmt->execute($params);
+        return $stmt->fetchAll();
     }
 
-    // ====================================================
-    // 🔹 Generic: Update (dynamic columns)
-    // ====================================================
-    public function update(int $id, array $data): bool {
-        if (empty($data)) return false;
-        $fields = [];
-        foreach ($data as $key => $val) {
-            $fields[] = "$key = :$key";
-        }
-        $sql = sprintf("UPDATE %s SET %s WHERE id = :id", $this->table, implode(', ', $fields));
-
+    protected function queryOne(string $sql, array $params = []): ?array
+    {
         $stmt = $this->db->prepare($sql);
-        foreach ($data as $key => $val) {
-            $stmt->bindValue(":$key", $val);
-        }
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        return $stmt->execute();
+        $stmt->execute($params);
+        return $stmt->fetch() ?: null;
     }
 
-    // ====================================================
-    // 🔹 Helper: Count all records
-    // ====================================================
-    public function count(): int {
-        $stmt = $this->db->query("SELECT COUNT(*) AS cnt FROM {$this->table}");
-        return (int)$stmt->fetchColumn();
+    private function onlyAllowedColumns(array $data): array
+    {
+        return array_intersect_key($data, array_flip($this->columns));
     }
 }
-?>
