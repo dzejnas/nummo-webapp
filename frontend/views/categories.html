@@ -1,0 +1,41 @@
+<div class="page-header">
+  <h1 class="h3 fw-bold mb-0">Categories <span class="badge text-bg-secondary fs-6">admin</span></h1>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#category-modal">
+    <i class="bi bi-plus-lg"></i> Add category
+  </button>
+</div>
+
+<div class="card p-3">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th>#</th><th>Name</th><th></th></tr></thead>
+      <tbody id="categories-table">
+        <tr><td>1</td><td>Food</td><td class="text-end"><button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button> <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></td></tr>
+        <tr><td>2</td><td>Transport</td><td class="text-end"><button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button> <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></td></tr>
+        <tr><td>3</td><td>Shopping</td><td class="text-end"><button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button> <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></td></tr>
+        <tr><td>4</td><td>Bills</td><td class="text-end"><button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button> <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></td></tr>
+        <tr><td>5</td><td>Entertainment</td><td class="text-end"><button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button> <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></td></tr>
+        <tr><td>6</td><td>Other</td><td class="text-end"><button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button> <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="category-modal" tabindex="-1" aria-labelledby="category-modal-title" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" id="category-form" novalidate>
+      <div class="modal-header">
+        <h2 class="modal-title h5" id="category-modal-title">Category</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label" for="category-name">Name</label>
+        <input type="text" class="form-control" id="category-name" name="name" required minlength="2" maxlength="60">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>

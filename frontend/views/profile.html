@@ -1,72 +1,35 @@
-<!-- =========================================================
-     NUMMO APP — PROFILE VIEW
-     Clean, editable user profile page
-========================================================= -->
-
-<section class="container py-5 fade-in">
-  <div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-      <div class="card shadow-lg border-0 rounded-4">
-        <div class="card-body p-4">
-          <div class="text-center mb-4">
-            <img 
-              src="https://cdn-icons-png.flaticon.com/512/3177/3177440.png" 
-              alt="User avatar" 
-              class="rounded-circle mb-3" 
-              width="90" 
-              height="90">
-            <h3 class="fw-bold text-primary mb-1">My Profile</h3>
-            <p class="text-muted small">Manage your personal information</p>
-          </div>
-
-          <form id="profile-form" autocomplete="off">
-            <!-- Name -->
-            <div class="mb-3">
-              <label for="profile-name" class="form-label fw-semibold">Full Name</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                id="profile-name" 
-                placeholder="Your Name"
-                required>
-            </div>
-
-            <!-- Email -->
-            <div class="mb-3">
-              <label for="profile-email" class="form-label fw-semibold">Email</label>
-              <input 
-                type="email" 
-                class="form-control" 
-                id="profile-email" 
-                placeholder="you@example.com"
-                required>
-            </div>
-
-            <!-- Password update (optional) -->
-            <div class="mb-3">
-              <label for="profile-password" class="form-label fw-semibold">Change Password</label>
-              <input 
-                type="password" 
-                class="form-control" 
-                id="profile-password" 
-                placeholder="Leave blank to keep current password">
-            </div>
-
-            <!-- Submit -->
-            <div class="d-grid">
-              <button type="submit" class="btn btn-primary py-2 fw-semibold">
-                Save Changes
-              </button>
-            </div>
-          </form>
-
-          <div class="text-center mt-4">
-            <button class="btn btn-outline-danger btn-sm" id="logout-btn">
-              <i class="bi bi-box-arrow-right"></i> Logout
-            </button>
-          </div>
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card p-4">
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <i class="bi bi-person-circle display-5 text-primary"></i>
+        <div>
+          <h1 class="h4 fw-bold mb-0">Amina Hodzic</h1>
+          <span class="badge text-bg-light">user</span>
         </div>
       </div>
+
+      <form id="profile-form" novalidate>
+        <div class="mb-3">
+          <label class="form-label" for="profile-name">Full name</label>
+          <input type="text" class="form-control" id="profile-name" name="name" value="Amina Hodzic" required minlength="2">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="profile-email">Email</label>
+          <input type="email" class="form-control" id="profile-email" name="email" value="amina@nummo.com" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="profile-currency">Main currency</label>
+          <select class="form-select" id="profile-currency" name="currency">
+            <option selected>EUR</option><option>USD</option><option>GBP</option><option>CHF</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="profile-password">New password</label>
+          <input type="password" class="form-control" id="profile-password" name="password" minlength="6" placeholder="Leave empty to keep the current one">
+        </div>
+        <button type="submit" class="btn btn-primary">Save changes</button>
+      </form>
     </div>
   </div>
-</section>
+</div>

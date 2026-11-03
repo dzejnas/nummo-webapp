@@ -1,0 +1,59 @@
+// Nummo ERD — paste into https://dbdiagram.io to view or export as PNG
+
+Table users {
+  id int [pk, increment]
+  name varchar(100) [not null]
+  email varchar(190) [not null, unique]
+  password varchar(255) [not null, note: 'bcrypt hash']
+  role enum('user','admin') [not null, default: 'user']
+  balance decimal(12,2) [not null, default: 0]
+  currency char(3) [not null, default: 'EUR']
+  created_at timestamp
+}
+
+Table categories {
+  id int [pk, increment]
+  name varchar(60) [not null, unique]
+}
+
+Table merchants {
+  id int [pk, increment]
+  name varchar(120) [not null, unique]
+  category_id int [ref: > categories.id]
+  contact_email varchar(190)
+  created_at timestamp
+}
+
+Table contacts {
+  id int [pk, increment]
+  user_id int [not null, ref: > users.id]
+  friend_user_id int [not null, ref: > users.id]
+  status enum('pending','accepted','blocked') [not null, default: 'pending']
+  created_at timestamp
+  indexes {
+    (user_id, friend_user_id) [unique]
+  }
+}
+
+Table transactions {
+  id int [pk, increment]
+  sender_id int [not null, ref: > users.id]
+  receiver_id int [ref: > users.id, note: 'set when paying a user']
+  merchant_id int [ref: > merchants.id, note: 'set when paying a merchant']
+  category_id int [ref: > categories.id]
+  amount decimal(12,2) [not null]
+  currency char(3) [not null, default: 'EUR']
+  note varchar(255)
+  status enum('pending','completed','failed') [not null, default: 'completed']
+  created_at timestamp
+}
+
+Table payment_requests {
+  id int [pk, increment]
+  requester_id int [not null, ref: > users.id]
+  payer_id int [not null, ref: > users.id]
+  amount decimal(12,2) [not null]
+  note varchar(255)
+  status enum('pending','paid','declined') [not null, default: 'pending']
+  created_at timestamp
+}
