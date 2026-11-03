@@ -1,50 +1,60 @@
 <?php
+require_once __DIR__ . '/BaseService.php';
 require_once __DIR__ . '/../dao/MerchantDao.php';
 require_once __DIR__ . '/../dao/CategoryDao.php';
-require_once __DIR__ . '/Validation.php';
 
-class MerchantService {
-    private MerchantDao $dao;
-    private CategoryDao $catDao;
-
-    public function __construct() {
-        $this->dao = new MerchantDao();
-        $this->catDao = new CategoryDao();
+class MerchantService extends BaseService
+{
+    public function __construct()
+    {
+        parent::__construct(new MerchantDao(), 'Merchant');
     }
 
-    public function get_all(): array {
-        return $this->dao->getAll();
+    public function create(array $data): array
+    {
+        $merchant = $this->validate($data);
+        $this->assertNameIsFree($merchant['name']);
+
+        $id = $this->dao->insert($merchant);
+        return $this->getById($id);
     }
 
-    public function get_by_id(int $id): array {
-        $merchant = $this->dao->getById($id);
-        if (!$merchant) throw new Exception("Merchant not found", 404);
+    // PUT replaces the merchant, so all fields are validated again
+    public function update(int $id, array $data): array
+    {
+        $this->getById($id);
+        $merchant = $this->validate($data);
+        $this->assertNameIsFree($merchant['name'], $id);
+
+        $this->dao->update($id, $merchant);
+        return $this->getById($id);
+    }
+
+    private function validate(array $data): array
+    {
+        $merchant = [
+            'name'          => Validator::string($data, 'name', 2, 120),
+            'category_id'   => null,
+            'contact_email' => null,
+        ];
+
+        if (!empty($data['category_id'])) {
+            $merchant['category_id'] = Validator::id($data, 'category_id');
+            if ((new CategoryDao())->getById($merchant['category_id']) === null) {
+                throw new ApiException('Category does not exist');
+            }
+        }
+        if (!empty($data['contact_email'])) {
+            $merchant['contact_email'] = Validator::email($data, 'contact_email');
+        }
         return $merchant;
     }
 
-    public function create(array $data): array {
-        $name = Validation::str_required($data, 'name', 2, 120);
-        if ($this->dao->getByName($name)) throw new Exception("Merchant with this name exists", 400);
-
-        if (!empty($data['category_id']) && !$this->catDao->getById((int)$data['category_id']))
-            throw new Exception("Invalid category_id", 400);
-
-        $id = $this->dao->create($data);
-        return $this->dao->getById($id);
-    }
-
-    public function update(int $id, array $data): array {
-        $merchant = $this->dao->getById($id);
-        if (!$merchant) throw new Exception("Merchant not found", 404);
-
-        $this->dao->update($id, $data);
-        return $this->dao->getById($id);
-    }
-
-    public function delete(int $id): bool {
-        $merchant = $this->dao->getById($id);
-        if (!$merchant) throw new Exception("Merchant not found", 404);
-        return $this->dao->delete($id);
+    private function assertNameIsFree(string $name, ?int $exceptId = null): void
+    {
+        $existing = $this->dao->getByName($name);
+        if ($existing !== null && $existing['id'] !== $exceptId) {
+            throw new ApiException('A merchant with this name already exists', 409);
+        }
     }
 }
-?>

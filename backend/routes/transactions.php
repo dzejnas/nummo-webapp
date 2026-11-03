@@ -1,36 +1,29 @@
 <?php
 require_once __DIR__ . '/../services/TransactionService.php';
 
-Flight::map('transaction_service', fn() => new TransactionService());
+Flight::register('transactionService', 'TransactionService');
 
-Flight::route('GET /api/transactions', fn() =>
-    Flight::json(['data' => Flight::transaction_service()->get_all(), 'error' => null])
-);
-
-Flight::route('GET /api/transactions/@id', fn($id) =>
-    Flight::json(['data' => Flight::transaction_service()->get_by_id((int)$id), 'error' => null])
-);
-
-Flight::route('POST /api/transactions', function() {
-    try {
-        $data = Flight::request()->data->getData();
-        $created = Flight::transaction_service()->create($data);
-        Flight::json(['data' => $created, 'error' => null], 201);
-    } catch (Throwable $e) {
-        Flight::json(['data' => null, 'error' => $e->getMessage()], 400);
-    }
+// Optional filters: ?user_id=2&status=completed&category_id=1
+Flight::route('GET /api/transactions', function () {
+    $filters = Flight::request()->query->getData();
+    Flight::json(Flight::transactionService()->getFiltered($filters));
 });
 
-Flight::route('PUT /api/transactions/@id', function($id) {
-    try {
-        $data = Flight::request()->data->getData();
-        $updated = Flight::transaction_service()->update((int)$id, $data);
-        Flight::json(['data' => $updated, 'error' => null]);
-    } catch (Throwable $e) {
-        Flight::json(['data' => null, 'error' => $e->getMessage()], 400);
-    }
+Flight::route('GET /api/transactions/@id:[0-9]+', function ($id) {
+    Flight::json(Flight::transactionService()->getById((int) $id));
 });
 
-Flight::route('DELETE /api/transactions/@id', fn($id) =>
-    Flight::json(['success' => Flight::transaction_service()->delete((int)$id), 'error' => null])
-);
+Flight::route('POST /api/transactions', function () {
+    $data = Flight::request()->data->getData();
+    Flight::json(Flight::transactionService()->create($data), 201);
+});
+
+Flight::route('PUT /api/transactions/@id:[0-9]+', function ($id) {
+    $data = Flight::request()->data->getData();
+    Flight::json(Flight::transactionService()->update((int) $id, $data));
+});
+
+Flight::route('DELETE /api/transactions/@id:[0-9]+', function ($id) {
+    Flight::transactionService()->delete((int) $id);
+    Flight::json(['message' => 'Transaction deleted']);
+});

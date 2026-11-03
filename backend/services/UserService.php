@@ -1,73 +1,75 @@
 <?php
+require_once __DIR__ . '/BaseService.php';
 require_once __DIR__ . '/../dao/UserDao.php';
-require_once __DIR__ . '/Validation.php';
 
-/**
- * UserService
- * ------------------------------------------
- * Handles business logic for User management.
- */
-class UserService {
-    private UserDao $dao;
+class UserService extends BaseService
+{
+    private const ROLES = ['user', 'admin'];
 
-    public function __construct() {
-        $this->dao = new UserDao();
+    public function __construct()
+    {
+        parent::__construct(new UserDao(), 'User');
     }
 
-    // --------------------------------------------------
-    public function get_all(): array {
-        return $this->dao->getAll();
+    public function create(array $data): array
+    {
+        $user = [
+            'name'     => Validator::string($data, 'name', 2, 100),
+            'email'    => Validator::email($data),
+            'password' => password_hash(Validator::string($data, 'password', 6, 72), PASSWORD_BCRYPT),
+            'role'     => isset($data['role']) ? Validator::oneOf($data, 'role', self::ROLES) : 'user',
+            'currency' => isset($data['currency']) ? Validator::currency($data) : 'EUR',
+            'balance'  => isset($data['balance']) ? $this->balance($data) : 0,
+        ];
+
+        $this->assertEmailIsFree($user['email']);
+        $id = $this->dao->insert($user);
+        return $this->getById($id);
     }
 
-    // --------------------------------------------------
-    public function get_by_id(int $id): array {
-        $user = $this->dao->getById($id);
-        if (!$user) {
-            throw new Exception("User not found", 404);
+    // Only the fields that are sent are changed
+    public function update(int $id, array $data): array
+    {
+        $this->getById($id);
+        $changes = [];
+
+        if (isset($data['name'])) {
+            $changes['name'] = Validator::string($data, 'name', 2, 100);
         }
-        return $user;
-    }
-
-    // --------------------------------------------------
-    public function create(array $data): array {
-        $name  = Validation::str_required($data, 'name', 2, 120);
-        $email = Validation::email_required($data, 'email');
-
-        $existing = $this->dao->getByEmail($email);
-        if ($existing) {
-            throw new Exception("Email already in use", 400);
-        }
-
-        $role = $data['role'] ?? 'USER';
-        $id = $this->dao->create(['name' => $name, 'email' => $email, 'role' => $role]);
-        return $this->dao->getById($id);
-    }
-
-    // --------------------------------------------------
-    public function update(int $id, array $data): array {
-        $user = $this->dao->getById($id);
-        if (!$user) {
-            throw new Exception("User not found", 404);
-        }
-
         if (isset($data['email'])) {
-            $existing = $this->dao->getByEmail($data['email']);
-            if ($existing && $existing['id'] != $id) {
-                throw new Exception("Another user with this email already exists", 400);
-            }
+            $changes['email'] = Validator::email($data);
+            $this->assertEmailIsFree($changes['email'], $id);
+        }
+        if (isset($data['password'])) {
+            $changes['password'] = password_hash(Validator::string($data, 'password', 6, 72), PASSWORD_BCRYPT);
+        }
+        if (isset($data['role'])) {
+            $changes['role'] = Validator::oneOf($data, 'role', self::ROLES);
+        }
+        if (isset($data['currency'])) {
+            $changes['currency'] = Validator::currency($data);
+        }
+        if (isset($data['balance'])) {
+            $changes['balance'] = $this->balance($data);
         }
 
-        $this->dao->update($id, $data);
-        return $this->dao->getById($id);
+        $this->dao->update($id, $changes);
+        return $this->getById($id);
     }
 
-    // --------------------------------------------------
-    public function delete(int $id): bool {
-        $user = $this->dao->getById($id);
-        if (!$user) {
-            throw new Exception("User not found", 404);
+    private function assertEmailIsFree(string $email, ?int $exceptUserId = null): void
+    {
+        $existing = $this->dao->getByEmail($email);
+        if ($existing !== null && $existing['id'] !== $exceptUserId) {
+            throw new ApiException('Email is already in use', 409);
         }
-        return $this->dao->delete($id);
+    }
+
+    private function balance(array $data): float
+    {
+        if (!is_numeric($data['balance']) || $data['balance'] < 0) {
+            throw new ApiException('balance must be 0 or more');
+        }
+        return round((float) $data['balance'], 2);
     }
 }
-?>

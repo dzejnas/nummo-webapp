@@ -1,41 +1,33 @@
 <?php
 require_once __DIR__ . '/../services/UserService.php';
+require_once __DIR__ . '/../services/TransactionService.php';
 
-Flight::map('user_service', fn() => new UserService());
+Flight::register('userService', 'UserService');
 
-// GET all users
-Flight::route('GET /api/users', fn() =>
-    Flight::json(['data' => Flight::user_service()->get_all(), 'error' => null])
-);
-
-// GET user by ID
-Flight::route('GET /api/users/@id', fn($id) =>
-    Flight::json(['data' => Flight::user_service()->get_by_id((int)$id), 'error' => null])
-);
-
-// POST create user
-Flight::route('POST /api/users', function() {
-    try {
-        $data = Flight::request()->data->getData();
-        $created = Flight::user_service()->create($data);
-        Flight::json(['data' => $created, 'error' => null], 201);
-    } catch (Throwable $e) {
-        Flight::json(['data' => null, 'error' => $e->getMessage()], 400);
-    }
+Flight::route('GET /api/users', function () {
+    Flight::json(Flight::userService()->getAll());
 });
 
-// PUT update user
-Flight::route('PUT /api/users/@id', function($id) {
-    try {
-        $data = Flight::request()->data->getData();
-        $updated = Flight::user_service()->update((int)$id, $data);
-        Flight::json(['data' => $updated, 'error' => null]);
-    } catch (Throwable $e) {
-        Flight::json(['data' => null, 'error' => $e->getMessage()], 400);
-    }
+Flight::route('GET /api/users/@id:[0-9]+', function ($id) {
+    Flight::json(Flight::userService()->getById((int) $id));
 });
 
-// DELETE user
-Flight::route('DELETE /api/users/@id', fn($id) =>
-    Flight::json(['success' => Flight::user_service()->delete((int)$id), 'error' => null])
-);
+// Spending per category for the dashboard chart
+Flight::route('GET /api/users/@id:[0-9]+/spending', function ($id) {
+    Flight::json((new TransactionService())->getSpendingByCategory((int) $id));
+});
+
+Flight::route('POST /api/users', function () {
+    $data = Flight::request()->data->getData();
+    Flight::json(Flight::userService()->create($data), 201);
+});
+
+Flight::route('PUT /api/users/@id:[0-9]+', function ($id) {
+    $data = Flight::request()->data->getData();
+    Flight::json(Flight::userService()->update((int) $id, $data));
+});
+
+Flight::route('DELETE /api/users/@id:[0-9]+', function ($id) {
+    Flight::userService()->delete((int) $id);
+    Flight::json(['message' => 'User deleted']);
+});
