@@ -10,6 +10,8 @@ require_once __DIR__ . '/../dao/CategoryDao.php';
 // - a completed payment moves money: sender balance goes down, receiver balance goes up
 // - the sender must have enough balance
 // - completed payments cannot be edited or deleted (they are financial records)
+// - users see payments they sent or received; only the sender (or an admin) can change one
+// $user is the logged-in user (from the JWT).
 class TransactionService extends BaseService
 {
     // All balances in Nummo are kept in euros. users.currency is only the display currency.
@@ -24,13 +26,24 @@ class TransactionService extends BaseService
         $this->users = new UserDao();
     }
 
-    public function getFiltered(array $filters): array
+    public function getFiltered(array $filters, array $user): array
     {
+        // Normal users always get only their own transactions
+        if (!$this->isAdmin($user)) {
+            $filters['user_id'] = $user['id'];
+        }
         $userId     = isset($filters['user_id']) ? Validator::id($filters, 'user_id') : null;
         $status     = isset($filters['status']) ? Validator::oneOf($filters, 'status', self::STATUSES) : null;
         $categoryId = isset($filters['category_id']) ? Validator::id($filters, 'category_id') : null;
 
         return $this->dao->getFiltered($userId, $status, $categoryId);
+    }
+
+    public function getByIdFor(int $id, array $user): array
+    {
+        $transaction = $this->getById($id);
+        $this->assertCanAccess($user, in_array($user['id'], [$transaction['sender_id'], $transaction['receiver_id']], true));
+        return $transaction;
     }
 
     public function getSpendingByCategory(int $userId): array
@@ -41,8 +54,12 @@ class TransactionService extends BaseService
         return $this->dao->getSpendingByCategory($userId);
     }
 
-    public function create(array $data): array
+    public function create(array $data, array $user): array
     {
+        // Users can only send their own money; admins may record a payment for anyone
+        if (!$this->isAdmin($user)) {
+            $data['sender_id'] = $user['id'];
+        }
         $transaction = $this->validateNew($data);
 
         $this->dao->beginTransaction();
@@ -67,9 +84,10 @@ class TransactionService extends BaseService
     }
 
     // Only note, category and status can change. Amount and people are fixed once created.
-    public function update(int $id, array $data): array
+    public function update(int $id, array $data, array $user): array
     {
         $current = $this->getById($id);
+        $this->assertCanAccess($user, $current['sender_id'] === $user['id']);
         if ($current['status'] !== 'pending') {
             throw new ApiException('Only pending transactions can be changed', 409);
         }
@@ -99,9 +117,11 @@ class TransactionService extends BaseService
         return $this->getById($id);
     }
 
-    public function delete(int $id): void
+    public function deleteFor(int $id, array $user): void
     {
-        if ($this->getById($id)['status'] === 'completed') {
+        $transaction = $this->getById($id);
+        $this->assertCanAccess($user, $transaction['sender_id'] === $user['id']);
+        if ($transaction['status'] === 'completed') {
             throw new ApiException('Completed transactions cannot be deleted', 409);
         }
         $this->dao->delete($id);

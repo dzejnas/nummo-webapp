@@ -22,14 +22,15 @@
         <span class="navbar-toggler-icon"></span>
       </button>
 
+      <!-- data-show="user" = only when logged in, "admin" = only admins, "guest" = only when logged out -->
       <div class="collapse navbar-collapse" id="main-nav">
-        <ul class="navbar-nav me-auto" id="nav-links">
-          <li class="nav-item"><a class="nav-link" href="#dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="#transactions"><i class="bi bi-arrow-left-right"></i> Transactions</a></li>
-          <li class="nav-item"><a class="nav-link" href="#requests"><i class="bi bi-envelope-paper"></i> Requests</a></li>
-          <li class="nav-item"><a class="nav-link" href="#contacts"><i class="bi bi-people"></i> Contacts</a></li>
-          <li class="nav-item"><a class="nav-link" href="#merchants"><i class="bi bi-shop"></i> Merchants</a></li>
-          <li class="nav-item dropdown">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item" data-show="user"><a class="nav-link" href="#dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+          <li class="nav-item" data-show="user"><a class="nav-link" href="#transactions"><i class="bi bi-arrow-left-right"></i> Transactions</a></li>
+          <li class="nav-item" data-show="user"><a class="nav-link" href="#requests"><i class="bi bi-envelope-paper"></i> Requests</a></li>
+          <li class="nav-item" data-show="user"><a class="nav-link" href="#contacts"><i class="bi bi-people"></i> Contacts</a></li>
+          <li class="nav-item" data-show="user"><a class="nav-link" href="#merchants"><i class="bi bi-shop"></i> Merchants</a></li>
+          <li class="nav-item dropdown" data-show="admin">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               <i class="bi bi-shield-lock"></i> Admin
             </a>
@@ -40,9 +41,14 @@
           </li>
         </ul>
         <ul class="navbar-nav">
-          <li class="nav-item"><a class="nav-link" href="#profile"><i class="bi bi-person-circle"></i> Profile</a></li>
-          <li class="nav-item"><a class="nav-link" href="#login"><i class="bi bi-box-arrow-in-right"></i> Login</a></li>
-          <li class="nav-item"><a class="nav-link" href="#register"><i class="bi bi-person-plus"></i> Register</a></li>
+          <li class="nav-item" data-show="user">
+            <a class="nav-link" href="#profile"><i class="bi bi-person-circle"></i> <span id="nav-user-name">Profile</span></a>
+          </li>
+          <li class="nav-item" data-show="user">
+            <a class="nav-link" href="#logout" id="logout-link"><i class="bi bi-box-arrow-right"></i> Log out</a>
+          </li>
+          <li class="nav-item" data-show="guest"><a class="nav-link" href="#login"><i class="bi bi-box-arrow-in-right"></i> Log in</a></li>
+          <li class="nav-item" data-show="guest"><a class="nav-link" href="#register"><i class="bi bi-person-plus"></i> Register</a></li>
         </ul>
       </div>
     </div>
@@ -56,10 +62,29 @@
     &copy; 2026 Nummo &middot; Web Programming project by Džejna Sejfić
   </footer>
 
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Core: configuration, login state, API access, UI helpers -->
   <script src="js/config.js"></script>
-  <script src="js/views.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <!-- Services: the only code that calls the backend -->
+  <script src="js/services/services.js"></script>
+  <!-- Pages: one controller per view -->
+  <script src="js/pages/auth.js"></script>
+  <script src="js/pages/dashboard.js"></script>
+  <script src="js/pages/transactions.js"></script>
+  <script src="js/pages/requests.js"></script>
+  <script src="js/pages/contacts.js"></script>
+  <script src="js/pages/merchants.js"></script>
+  <script src="js/pages/categories.js"></script>
+  <script src="js/pages/users.js"></script>
+  <script src="js/pages/profile.js"></script>
+  <!-- Router last: it starts the app -->
   <script src="js/router.js"></script>
 </body>
 </html>

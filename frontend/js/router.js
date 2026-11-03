@@ -1,54 +1,90 @@
 // Hash-based SPA router.
-// "#transactions" loads views/transactions.html into <main id="app"> without a page reload.
+// "#transactions" loads views/transactions.html into <main id="app"> without a page reload,
+// then runs Pages.transactions.init() (js/pages/transactions.js).
+//
+// access: 'guest' = only when logged out, 'user' = any logged-in user, 'admin' = admins only
 
 const routes = {
-  login:        { view: 'views/login.html',        title: 'Login' },
-  register:     { view: 'views/register.html',     title: 'Register' },
-  dashboard:    { view: 'views/dashboard.html',    title: 'Dashboard' },
-  transactions: { view: 'views/transactions.html', title: 'Transactions' },
-  requests:     { view: 'views/requests.html',     title: 'Payment requests' },
-  contacts:     { view: 'views/contacts.html',     title: 'Contacts' },
-  merchants:    { view: 'views/merchants.html',    title: 'Merchants' },
-  categories:   { view: 'views/categories.html',   title: 'Categories' },
-  users:        { view: 'views/users.html',        title: 'Users' },
-  profile:      { view: 'views/profile.html',      title: 'Profile' },
+  login:        { view: 'views/login.html',        title: 'Log in',           access: 'guest' },
+  register:     { view: 'views/register.html',     title: 'Register',         access: 'guest' },
+  dashboard:    { view: 'views/dashboard.html',    title: 'Dashboard',        access: 'user' },
+  transactions: { view: 'views/transactions.html', title: 'Transactions',     access: 'user' },
+  requests:     { view: 'views/requests.html',     title: 'Payment requests', access: 'user' },
+  contacts:     { view: 'views/contacts.html',     title: 'Contacts',         access: 'user' },
+  merchants:    { view: 'views/merchants.html',    title: 'Merchants',        access: 'user' },
+  profile:      { view: 'views/profile.html',      title: 'Profile',          access: 'user' },
+  categories:   { view: 'views/categories.html',   title: 'Categories',       access: 'admin' },
+  users:        { view: 'views/users.html',        title: 'Users',            access: 'admin' },
 };
 
-const DEFAULT_ROUTE = 'dashboard';
 
-function currentRoute() {
-  const name = location.hash.replace('#', '');
-  return routes[name] ? name : DEFAULT_ROUTE;
-}
 
 async function loadRoute() {
-  const name = currentRoute();
-  const route = routes[name];
-  const app = document.getElementById('app');
+  let name = location.hash.replace('#', '');
 
+  if (name === 'logout') {
+    AuthService.logout();
+    UI.toast('You are logged out', 'info');
+    location.hash = '#login';
+    return;
+  }
+
+  if (!routes[name]) {
+    name = Auth.isLoggedIn() ? 'dashboard' : 'login';
+  }
+  const route = routes[name];
+
+  // Route guards
+  if (route.access !== 'guest' && !Auth.isLoggedIn()) {
+    location.hash = '#login';
+    return;
+  }
+  if (route.access === 'guest' && Auth.isLoggedIn()) {
+    location.hash = '#dashboard';
+    return;
+  }
+  if (route.access === 'admin' && !Auth.isAdmin()) {
+    UI.toast('This page is only for administrators', 'danger');
+    location.hash = '#dashboard';
+    return;
+  }
+
+  updateNavbar(name);
+
+  const app = document.getElementById('app');
   try {
     const response = await fetch(route.view);
     if (!response.ok) throw new Error('View not found: ' + route.view);
     app.innerHTML = await response.text();
   } catch (error) {
     app.innerHTML = '<div class="alert alert-danger">Could not load this page.</div>';
-    console.error(error);
     return;
   }
 
   document.title = route.title + ' · Nummo';
-  highlightNav(name);
   closeMobileMenu();
 
-  // Run the page's own setup code, if it has any (see views.js)
-  if (typeof Views[name] === 'function') {
-    Views[name]();
+  if (Pages[name]) {
+    Pages[name].init();
   }
 }
 
-function highlightNav(name) {
+// Shows or hides navbar items for the current role, and highlights the active page
+function updateNavbar(activeName) {
+  const loggedIn = Auth.isLoggedIn();
+  document.querySelectorAll('[data-show]').forEach(element => {
+    const show = element.dataset.show;
+    const visible = (show === 'guest' && !loggedIn)
+      || (show === 'user' && loggedIn)
+      || (show === 'admin' && Auth.isAdmin());
+    element.classList.toggle('d-none', !visible);
+  });
+
+  const user = Auth.getUser();
+  document.getElementById('nav-user-name').textContent = user ? user.name : 'Profile';
+
   document.querySelectorAll('#main-nav .nav-link, #main-nav .dropdown-item').forEach(link => {
-    link.classList.toggle('active', link.getAttribute('href') === '#' + name);
+    link.classList.toggle('active', link.getAttribute('href') === '#' + activeName);
   });
 }
 

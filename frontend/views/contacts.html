@@ -9,16 +9,7 @@
   <div class="table-responsive">
     <table class="table align-middle mb-0">
       <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Added</th><th></th></tr></thead>
-      <tbody id="contacts-table">
-        <tr>
-          <td>Tarik Begic</td><td>tarik@nummo.com</td>
-          <td><span class="badge text-bg-success">accepted</span></td><td>15.10.2026</td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-outline-secondary" title="Block"><i class="bi bi-slash-circle"></i></button>
-            <button class="btn btn-sm btn-outline-danger" title="Remove"><i class="bi bi-trash"></i></button>
-          </td>
-        </tr>
-      </tbody>
+      <tbody id="contacts-table"></tbody>
     </table>
   </div>
 </div>
@@ -31,8 +22,9 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <label class="form-label" for="contact-email">Their email</label>
-        <input type="email" class="form-control" id="contact-email" name="email" required>
+        <label class="form-label" for="contact-email">Their Nummo email</label>
+        <input type="email" class="form-control" id="contact-email" name="email" required maxlength="190">
+        <div class="invalid-feedback"></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>

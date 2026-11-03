@@ -100,3 +100,39 @@ ran it locally, and committed the result myself.
   the failure is in `error.log`, and the other endpoints keep working.
 - A script compared the routes in `routes/*.php` with `openapi.yaml`: all 34 are documented.
 - Swagger UI loads with no spec errors; the dashboard converter shows live rates.
+
+## Milestone 4 — Authentication, middleware, logging, connected frontend
+
+**What the AI was used for**
+- `AuthService` (register, login, JWT with `firebase/php-jwt`), `/api/auth/*` and `/api/me` routes.
+- Middleware: `AuthMiddleware` (401), `RoleMiddleware` (403), `RequestLogger` (info log for every
+  request) and `ErrorHandler` (JSON errors, error log). Ownership checks in the services so users
+  only see and change their own contacts, payments and requests.
+- Rewriting the frontend so every page uses the API: `api.js` (JWT, 401/403 handling), one service
+  object per resource, one controller per page, route guards and a role-based navbar.
+- Updating the OpenAPI spec (bearer auth, 401/403 responses, new endpoints — 39 operations).
+
+**Most important prompts**
+- "Please continue with milestone 4 and 5 … let's finish a whole project."
+
+**Cases where the AI was wrong or produced poor code**
+1. *Test script, not the code, was wrong.* The first role test showed `401` for every request even
+   with a valid token. Calling one endpoint by hand with curl worked, so the problem was the test
+   helper: in zsh, `${TOKEN:+-H "Authorization: Bearer $TOKEN"}` is passed as one argument instead
+   of two, so curl never sent the header. The tests were rewritten as a bash script with an
+   argument array. Lesson: when a test fails, check the test first, not only the code.
+2. *Too many error messages after the session expired.* When the token was invalid, every request
+   on the page showed its own toast ("Invalid token", "You need to log in first", ...), up to four
+   at once. Now `api.js` logs out and shows one "session expired" message, and marks the error as
+   handled so `UI.error()` does not show it again.
+3. *`Pages` defined too late.* The page controller files are loaded before `router.js`, but the
+   `Pages` object was first declared in `router.js`, so `Pages.dashboard = ...` would have failed.
+   I moved the declaration to `ui.js`, which loads first.
+
+**What I checked myself**
+- curl with three real tokens (admin, two users): 401 without/with a bad token, 403 for admin-only
+  routes and other users' data, users cannot change their own role or balance, an admin cannot
+  delete their own account. Both logs contain user id and role.
+- In the browser: login, dashboard with real data, sending money, adding a contact, requesting
+  money, paying a request as the other user, admin pages, the Admin menu hidden for users, and
+  being sent to the login page with an expired token.

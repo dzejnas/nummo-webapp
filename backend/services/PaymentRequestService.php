@@ -6,6 +6,10 @@ require_once __DIR__ . '/../dao/UserDao.php';
 
 // A user (requester) asks another user (payer) for money.
 // When the payer accepts (status "paid"), a completed transaction payer -> requester is created.
+// Who may do what ($user is the logged-in user, admins may do everything):
+// - see: requester and payer
+// - pay or decline: only the payer
+// - change amount/note or delete: only the requester
 class PaymentRequestService extends BaseService
 {
     public function __construct()
@@ -13,13 +17,23 @@ class PaymentRequestService extends BaseService
         parent::__construct(new PaymentRequestDao(), 'Payment request');
     }
 
-    public function getForUser(int $userId): array
+    public function getAllFor(array $user): array
     {
-        return $this->dao->getForUser($userId);
+        return $this->isAdmin($user) ? $this->dao->getAll() : $this->dao->getForUser($user['id']);
     }
 
-    public function create(array $data): array
+    public function getByIdFor(int $id, array $user): array
     {
+        $request = $this->getById($id);
+        $this->assertCanAccess($user, in_array($user['id'], [$request['requester_id'], $request['payer_id']], true));
+        return $request;
+    }
+
+    public function create(array $data, array $user): array
+    {
+        if (!$this->isAdmin($user)) {
+            $data['requester_id'] = $user['id'];
+        }
         $requesterId = Validator::id($data, 'requester_id');
         $payerId     = Validator::id($data, 'payer_id');
 
@@ -42,14 +56,17 @@ class PaymentRequestService extends BaseService
     }
 
     // While pending: amount and note can change, and status can become "paid" or "declined"
-    public function update(int $id, array $data): array
+    public function update(int $id, array $data, array $user): array
     {
-        $request = $this->getById($id);
+        $request = $this->getByIdFor($id, $user);
         if ($request['status'] !== 'pending') {
             throw new ApiException('This request is already ' . $request['status'], 409);
         }
 
         $changes = [];
+        if (isset($data['amount']) || array_key_exists('note', $data)) {
+            $this->assertCanAccess($user, $request['requester_id'] === $user['id']);
+        }
         if (isset($data['amount'])) {
             $changes['amount'] = Validator::amount($data);
         }
@@ -57,6 +74,7 @@ class PaymentRequestService extends BaseService
             $changes['note'] = Validator::optionalString($data, 'note');
         }
         if (isset($data['status'])) {
+            $this->assertCanAccess($user, $request['payer_id'] === $user['id']);
             $changes['status'] = Validator::oneOf($data, 'status', ['pending', 'paid', 'declined']);
         }
 
@@ -73,6 +91,13 @@ class PaymentRequestService extends BaseService
             throw $e;
         }
         return $this->getById($id);
+    }
+
+    public function deleteFor(int $id, array $user): void
+    {
+        $request = $this->getByIdFor($id, $user);
+        $this->assertCanAccess($user, $request['requester_id'] === $user['id']);
+        $this->dao->delete($id);
     }
 
     private function pay(array $request): void
