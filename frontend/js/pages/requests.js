@@ -26,7 +26,10 @@ Pages.requests = {
     if (r.status === 'pending' && r.payer_id === me.id) {
       actions = `<button class="btn btn-sm btn-success" data-action="pay" data-id="${r.id}">Pay</button>
                  <button class="btn btn-sm btn-outline-secondary" data-action="decline" data-id="${r.id}">Decline</button>`;
-    } else if (r.requester_id === me.id || Auth.isAdmin()) {
+    } else if (r.status === 'paid' && r.transaction_id) {
+      actions = `<button class="btn btn-sm btn-outline-primary" data-action="receipt" data-id="${r.transaction_id}"
+                   aria-label="Receipt for request ${r.id}" title="Receipt"><i class="bi bi-receipt"></i></button>`;
+    } else if (r.status !== 'paid' && (r.requester_id === me.id || Auth.isAdmin())) {
       actions = `<button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${r.id}" title="Delete"><i class="bi bi-trash"></i></button>`;
     }
     return `<tr>
@@ -75,10 +78,16 @@ Pages.requests = {
     const id = Number(button.dataset.id);
 
     try {
+      if (button.dataset.action === 'receipt') {
+        Receipt.open(id);
+        return;
+      }
       if (button.dataset.action === 'pay') {
         if (!confirm('Pay this request now?')) return;
-        await PaymentRequestService.update(id, { status: 'paid' });
+        // Paying twice is safe: the server returns the already paid request without a second debit
+        const request = await UI.busy(button, () => PaymentRequestService.update(id, { status: 'paid' }));
         UI.toast('Request paid');
+        if (request.transaction_id) Receipt.open(request.transaction_id);
       } else if (button.dataset.action === 'decline') {
         await PaymentRequestService.update(id, { status: 'declined' });
         UI.toast('Request declined', 'info');

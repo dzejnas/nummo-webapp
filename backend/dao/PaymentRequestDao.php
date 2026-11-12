@@ -10,7 +10,13 @@ class PaymentRequestDao extends BaseDao
 
     public function __construct()
     {
-        parent::__construct('payment_requests', ['requester_id', 'payer_id', 'amount', 'note', 'status']);
+        parent::__construct('payment_requests', ['requester_id', 'payer_id', 'amount', 'note', 'status', 'transaction_id']);
+    }
+
+    // Locks the request until the DB transaction ends (see TransactionDao::getByIdForUpdate)
+    public function getByIdForUpdate(int $id): ?array
+    {
+        return $this->queryOne("SELECT * FROM payment_requests WHERE id = :id FOR UPDATE", ['id' => $id]);
     }
 
     public function getAll(): array

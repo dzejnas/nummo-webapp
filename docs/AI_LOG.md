@@ -164,3 +164,41 @@ ran it locally, and committed the result myself.
 - Built the Docker image and ran it locally against MySQL: the SPA, login with JWT, the API,
   Swagger and the exchange rates all work, and PHP source files cannot be downloaded.
 - The dashboard on a 375 px wide (phone) screen has no horizontal scrolling.
+
+## Nummo v2 — Reliable payments and receipts (after the course milestones)
+
+**What the AI was used for**
+- Concurrency-safe payments: row locks (`SELECT … FOR UPDATE`) in a fixed order, an atomic
+  conditional debit, and exact decimal amounts instead of floats.
+- Optional `Idempotency-Key` for direct payments, a unique link from each paid request to its
+  transaction, safe retries in the frontend, receipts, and closing accounts instead of deleting them.
+- Splitting `sql/nummo_db.sql` into `schema.sql` and an opt-in `demo_seed.sql`, a forward migration
+  with a rollback, and `backend/bin/create_admin.php` for the first admin and password rotation.
+- `backend/tests/payments_check.php`: 101 checks against MySQL, with races run in separate processes.
+
+**Most important prompts**
+- "Implement Nummo v2 — reliable payments and receipts." (with requirements for concurrency,
+  retries, receipts, deployment without demo data, and tests against MySQL)
+- "Fix all, finish v2" (after a code review of the first version)
+
+**Cases where the AI was wrong or produced poor code**
+1. *Concurrent retries deadlocked.* The first idempotency design inserted the key row first and
+   updated it later. Three simultaneous retries with the same key made MySQL report deadlocks, so
+   two of them got a 500 instead of the original payment (money was still correct). The race test
+   showed it. Now the sender's row is locked first, so retries wait in line and find the stored key.
+2. *Rollback after commit.* Replaying a key with a different payload threw an error after
+   `commit()`, inside a `try` whose `catch` called `rollBack()`. PHP then crashed with "There is no
+   active transaction". The same pattern was in `PaymentRequestService`. Both now commit first and
+   decide the result outside the `try`.
+3. *Lost keyboard focus.* After a payment, closing the receipt moved focus to a hidden element,
+   because the button that opened it was inside the payment dialog that had just closed. A code
+   review caught it; focus now goes to a visible button.
+
+**What I checked myself**
+- `payments_check.php` three times in a row: all 101 checks pass, and in 46/46 races both calls
+  really overlapped. A control test with the old unlocked v1 pattern overdrew in 5/5 rounds, which
+  proves the races are real.
+- The migration on a copy of the v1 database: data unchanged after migrate → rollback → migrate,
+  and the migrated schema matches `schema.sql`.
+- HTTP and browser: replay (200), payload mismatch (409), receipts for sender/receiver/admin, a
+  "lost" response retried with the same key (one debit), receipt keyboard focus, closing a user.

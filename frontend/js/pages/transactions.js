@@ -40,6 +40,8 @@ Pages.transactions = {
   row(t) {
     const me = Auth.getUser();
     const canChange = t.status === 'pending' && (t.sender_id === me.id || Auth.isAdmin());
+    const receipt = `<button class="btn btn-sm btn-outline-primary" data-action="receipt" data-id="${t.id}"
+      aria-label="Receipt ${UI.escape(t.reference)}" title="Receipt"><i class="bi bi-receipt"></i></button>`;
     const actions = canChange ? `
       <button class="btn btn-sm btn-success" data-action="complete" data-id="${t.id}" title="Send now"><i class="bi bi-check-lg"></i></button>
       <button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${t.id}" title="Edit"><i class="bi bi-pencil"></i></button>
@@ -52,13 +54,14 @@ Pages.transactions = {
       <td>${UI.escape(t.note || '')}</td>
       <td>${UI.badge(t.status)}</td>
       <td class="text-end">${UI.money(t.amount)}</td>
-      <td class="text-end text-nowrap">${actions}</td>
+      <td class="text-end text-nowrap">${receipt} ${actions}</td>
     </tr>`;
   },
 
   async openNew() {
     const form = document.getElementById('transaction-form');
     Validation.reset(form);
+    delete form.dataset.idempotencyKey; // a new payment gets a new key
     this.switchType('user');
     try {
       const [contacts, merchants] = await Promise.all([ContactService.getAll(), MerchantService.getAll()]);
@@ -97,12 +100,23 @@ Pages.transactions = {
     if (type === 'user') payment.receiver_id = data.receiver_id;
     else payment.merchant_id = data.merchant_id;
 
+    // Keep the same key while the outcome is unknown, so pressing Send again cannot pay twice.
+    // UI.busy disables the button while the request runs (no double clicks).
+    form.dataset.idempotencyKey ||= UI.newId();
     try {
-      await UI.busy(form.querySelector('[type=submit]'), () => TransactionService.create(payment));
+      const transaction = await UI.busy(form.querySelector('[type=submit]'),
+        () => TransactionService.create(payment, form.dataset.idempotencyKey));
+      delete form.dataset.idempotencyKey;
       UI.modal('transaction-modal').hide();
       UI.toast(payment.status === 'completed' ? 'Payment sent' : 'Payment saved as pending');
       this.load();
+      Receipt.show(transaction);
     } catch (error) {
+      if (error.status === 0 || error.status >= 500) {
+        UI.toast('We could not confirm this payment. Press Send again to retry; you will not be charged twice.', 'warning');
+        return; // keep the key and the form as they are
+      }
+      delete form.dataset.idempotencyKey; // the server answered: a changed payment needs a new key
       UI.error(error);
     }
   },
@@ -112,6 +126,10 @@ Pages.transactions = {
     if (!button) return;
     const id = Number(button.dataset.id);
 
+    if (button.dataset.action === 'receipt') {
+      Receipt.open(id);
+      return;
+    }
     try {
       if (button.dataset.action === 'complete') {
         await TransactionService.update(id, { status: 'completed' });

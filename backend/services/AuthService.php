@@ -37,12 +37,18 @@ class AuthService
             throw new ApiException('Wrong email or password', 401);
         }
 
+        if ($user['closed_at'] !== null) {
+            Logger::error("Failed login (closed account): user={$user['id']}");
+            throw new ApiException('This account has been closed', 401);
+        }
         unset($user['password']);
         Logger::info("Login: user={$user['id']} role={$user['role']}");
         return ['token' => $this->createToken($user), 'user' => $user];
     }
 
-    // Checks the token and returns the user stored in it. 401 if missing, invalid or expired.
+    // Checks the token and returns the current user. 401 if missing, invalid, expired, or the
+    // account was closed after the token was issued. Role and name come from the database, so an
+    // admin's changes apply immediately instead of when the token expires.
     public function userFromToken(string $token): array
     {
         try {
@@ -52,7 +58,12 @@ class AuthService
         } catch (Throwable $e) {
             throw new ApiException('Invalid token, please log in again', 401);
         }
-        return (array) $payload->user;
+
+        $user = (new UserDao())->getById((int) $payload->user->id);
+        if ($user === null || $user['closed_at'] !== null) {
+            throw new ApiException('This account has been closed', 401);
+        }
+        return ['id' => $user['id'], 'name' => $user['name'], 'email' => $user['email'], 'role' => $user['role']];
     }
 
     private function createToken(array $user): string

@@ -28,10 +28,8 @@ Flight::route('PUT /api/users/@id:[0-9]+', function ($id) {
     Flight::json(Flight::userService()->update((int) $id, $data));
 })->addMiddleware(adminOnly());
 
+// Closes the account (see UserService::close) — payment history is kept
 Flight::route('DELETE /api/users/@id:[0-9]+', function ($id) {
-    if ((int) $id === Flight::get('user')['id']) {
-        throw new ApiException('You cannot delete your own account', 409);
-    }
-    Flight::userService()->delete((int) $id);
-    Flight::json(['message' => 'User deleted']);
+    Flight::userService()->close((int) $id, Flight::get('user'));
+    Flight::json(['message' => 'User account closed']);
 })->addMiddleware(adminOnly());

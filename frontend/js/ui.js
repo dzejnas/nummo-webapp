@@ -45,7 +45,7 @@ const UI = {
     const colors = {
       completed: 'success', paid: 'success', accepted: 'success',
       pending: 'warning', failed: 'danger', declined: 'secondary', blocked: 'danger',
-      admin: 'dark', user: 'light',
+      admin: 'dark', user: 'light', active: 'success', closed: 'secondary',
     };
     return `<span class="badge text-bg-${colors[status] || 'secondary'}">${UI.escape(status)}</span>`;
   },
@@ -63,6 +63,12 @@ const UI = {
 
   emptyRow(columns, text) {
     return `<tr><td colspan="${columns}" class="text-center text-muted py-4">${UI.escape(text)}</td></tr>`;
+  },
+
+  // Random id for an Idempotency-Key. crypto.randomUUID needs https or localhost.
+  newId() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    return Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
   },
 
   modal(id) {

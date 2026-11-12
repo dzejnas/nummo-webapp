@@ -45,7 +45,7 @@ class ExchangeRateService
     // Converts an amount, e.g. 100 EUR -> USD
     public function convert(array $query): array
     {
-        $amount = Validator::amount($query);
+        $amount = (float) Validator::amount($query); // display conversion only, never stored
         $from   = Validator::currency($query, 'from');
         $to     = Validator::currency($query, 'to');
 
