@@ -40,14 +40,23 @@ class Validator
         return $value;
     }
 
-    // Money: greater than 0, at most 2 decimals
-    public static function amount(array $data, string $field = 'amount'): float
+    // Money: greater than 0 (or 0 with $allowZero), at most 2 decimals, max 1,000,000.
+    // Returns an exact decimal string like "12.50". Money never goes through float arithmetic:
+    // MySQL compares and adds it as DECIMAL.
+    public static function amount(array $data, string $field = 'amount', bool $allowZero = false): string
     {
         $value = $data[$field] ?? null;
-        if (!is_numeric($value) || $value <= 0 || $value > 1000000 || round($value, 2) != $value) {
+        if (is_int($value) || is_float($value)) {
+            $value = (string) $value; // JSON numbers: PHP prints the shortest exact form, e.g. 12.5
+        }
+        if (!is_string($value) || !preg_match('/^(\d{1,7})(?:\.(\d{1,2}))?$/', trim($value), $parts)) {
             throw new ApiException("$field must be a positive number with at most 2 decimals");
         }
-        return (float) $value;
+        $cents = (int) $parts[1] * 100 + (int) str_pad($parts[2] ?? '', 2, '0');
+        if (($cents === 0 && !$allowZero) || $cents > 100000000) {
+            throw new ApiException("$field must be a positive number with at most 2 decimals");
+        }
+        return sprintf('%d.%02d', intdiv($cents, 100), $cents % 100);
     }
 
     public static function oneOf(array $data, string $field, array $allowed): string

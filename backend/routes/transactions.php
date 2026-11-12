@@ -15,9 +15,12 @@ Flight::route('GET /api/transactions/@id:[0-9]+', function ($id) {
     Flight::json(Flight::transactionService()->getByIdFor((int) $id, Flight::get('user')));
 })->addMiddleware(loggedIn());
 
+// Optional header Idempotency-Key: a retry with the same key and body returns the first payment (200)
 Flight::route('POST /api/transactions', function () {
     $data = Flight::request()->data->getData();
-    Flight::json(Flight::transactionService()->create($data, Flight::get('user')), 201);
+    $key  = Flight::request()->getHeader('Idempotency-Key') ?: null;
+    $result = Flight::transactionService()->create($data, Flight::get('user'), $key);
+    Flight::json($result['transaction'], $result['replayed'] ? 200 : 201);
 })->addMiddleware(loggedIn());
 
 Flight::route('PUT /api/transactions/@id:[0-9]+', function ($id) {

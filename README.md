@@ -28,9 +28,14 @@ add friends as contacts, send money to them or pay merchants, ask others for mon
 requests, and see where their money goes on a spending chart. A built-in currency converter shows
 live exchange rates. Administrators manage users, merchants and spending categories.
 
+> **All balances in Nummo are simulated demo money.** No real funds are moved, stored or paid out.
+
 ### Features
 
-- 💸 **Send money** to a contact or pay a merchant — balances update instantly and safely
+- 💸 **Send money** to a contact or pay a merchant — balances update instantly and safely, even
+  when two payments happen at the same moment
+- 🔁 **Safe retries** — if the connection drops, pressing Send again never pays twice
+- 🧾 **Receipts** — every payment has a reference and a receipt you can reopen from Transactions
 - 📨 **Payment requests** — ask a friend for money; they can pay or decline with one click
 - 👥 **Contacts** — add people by email, block or remove them
 - 📊 **Dashboard** — balance, this month's income and spending, spending by category (Chart.js)
@@ -95,9 +100,16 @@ Six entities with primary and foreign keys — full diagram in [docs/ERD.md](doc
 | **merchants** | shops a user can pay | belongs to a category |
 | **contacts** | a user's friend list (`pending`, `accepted`, `blocked`) | user → user |
 | **transactions** | a payment to a user **or** a merchant | sender, receiver, merchant, category |
-| **payment_requests** | one user asks another to pay | requester → payer |
+| **payment_requests** | one user asks another to pay; `transaction_id` links a paid request to its payment | requester → payer, → transaction |
+| **idempotency_keys** | remembers which payment a retry key created, per user | user → transaction |
+
+Users are **closed, never deleted**: `users.closed_at` marks a closed account, and foreign keys
+(`ON DELETE RESTRICT`) protect the payment history.
 
 ## Roles and test accounts
+
+These accounts exist only when the **demo data** is loaded (`sql/demo_seed.sql`, local use only).
+Their balances are simulated.
 
 | Role | Email | Password | Can do |
 |---|---|---|---|
@@ -123,8 +135,10 @@ The dashboard converter and the balance shown in the user's own currency use the
 **Requirements:** PHP 8.1+, Composer, MySQL 8.
 
 ```bash
-# 1. Database: creates nummo_db with sample data
-mysql -u root -p < sql/nummo_db.sql
+# 1. Database: empty schema, then (optional, local only) the demo data with the test accounts
+mysql -u root -p -e "CREATE DATABASE nummo_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+mysql -u root -p nummo_db < sql/schema.sql
+mysql -u root -p nummo_db < sql/demo_seed.sql
 
 # 2. Configuration: copy the template and fill in your database credentials and a JWT secret
 cp backend/config/config.example.php backend/config/config.php
@@ -140,11 +154,30 @@ cd frontend && php -S localhost:8000          # in a second terminal
 Open **http://localhost:8000** and log in with a test account.
 **Swagger:** http://localhost:8080/docs/ — click **Authorize** and paste a token from `POST /api/auth/login`.
 
-Optional check of the database layer (runs CRUD on every table and rolls it back):
+### Tests
 
 ```bash
+# Payment reliability against MySQL: races with independent connections, retries, rollback,
+# receipts, closed accounts. Uses a throwaway database "nummo_test" on the server from config.php
+# (dropped and recreated each run) — run it against a local MySQL, not production.
+php backend/tests/payments_check.php
+
+# Database layer: CRUD on every table, rolled back afterwards (needs the demo data)
 php backend/tests/dao_check.php
 ```
+
+### Upgrading an existing v1 database
+
+The v2 migration keeps all data. Back up first, then run it once:
+
+```bash
+mysqldump -u root -p nummo_db > nummo_db_before_v2.sql
+mysql -u root -p nummo_db < sql/migrations/001_v2_payment_reliability.sql
+```
+
+To roll back, deploy the v1 code and run `sql/migrations/001_v2_payment_reliability.rollback.sql`.
+Transactions and requests are kept; idempotency keys, request → payment links and the closed flag
+are lost (closed accounts become active again in v1).
 
 ## REST API
 
@@ -174,6 +207,18 @@ Responses are JSON; errors look like `{"error": "message"}` with `400`, `401`, `
 - Users only see their own contacts, payments and requests. Only the payer can pay or decline a
   request; only the requester can change or delete it.
 - Emails, category names and merchant names are unique; users cannot send money to themselves.
+- **Concurrency:** each payment, settlement or delete runs in one database transaction. The row
+  being changed is locked first (`SELECT … FOR UPDATE`), then the users' rows in id order, and the
+  debit is one conditional statement (`… WHERE balance >= amount`), so two requests at the same
+  moment can never overdraw an account or settle the same item twice. Amounts are exact decimals
+  (`"12.50"`), never floats.
+- **Retries:** `POST /api/transactions` accepts an optional `Idempotency-Key` header. The same key
+  and body returns the first payment (`200`); the same key with a different body returns `409`.
+  Paying an already paid request returns it unchanged, with its `transaction_id`.
+- **Closing accounts:** `DELETE /api/users/{id}` closes the account. The user can no longer log in
+  (existing tokens stop working), send, receive or be added as a contact; contacts are removed,
+  pending payments become `failed` and pending requests `declined`. Completed payments, paid
+  requests and the balance stay as records. Paid requests cannot be deleted.
 
 </details>
 
@@ -241,9 +286,10 @@ nummo-webapp/
 │   ├── docs/          openapi.yaml
 │   ├── public/        index.php (front controller), Swagger UI
 │   ├── logs/          info.log, error.log (git-ignored)
-│   └── tests/         dao_check.php
+│   ├── bin/           create_admin.php — create an admin or rotate a password
+│   └── tests/         payments_check.php (races, retries), race_worker.php, dao_check.php
 ├── frontend/          single-page app
-├── sql/               nummo_db.sql — schema + sample data
+├── sql/               schema.sql, demo_seed.sql (opt-in), migrations/
 ├── docs/              ERD, screenshots, AI usage log
 ├── deploy/            Apache config and start script for Docker
 ├── Dockerfile
@@ -281,13 +327,33 @@ environment variables.
    ```
 4. Import the data using the MySQL service's public host and port (**Connect** tab):
    ```bash
-   docker run --rm -i mysql:8.4 mysql -h <host> -P <port> -u root -p<password> < sql/nummo_db.sql
+   docker run --rm -i mysql:8.4 mysql -h <host> -P <port> -u root -p<password> -e "CREATE DATABASE nummo_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+   docker run --rm -i mysql:8.4 mysql -h <host> -P <port> -u root -p<password> nummo_db < sql/schema.sql
    ```
+   Do **not** load `sql/demo_seed.sql` on a public deployment: its passwords are in this README.
 5. App service → **Settings → Networking → Generate Domain**, then add the link at the top of this README.
 
 Any other Docker host (DigitalOcean App Platform, Render, a VPS) works the same way.
 
 </details>
+
+### First admin and demo accounts
+
+A deployment starts with no users. Create the first admin with your own email and a unique
+password (asked for without echo, never passed on the command line):
+
+```bash
+php backend/bin/create_admin.php you@yourdomain.com "Your Name"            # local
+railway ssh -- php /var/www/backend/bin/create_admin.php you@yourdomain.com  # Railway container
+```
+
+Running it again for an existing email makes that account an admin with the **new** password. Use
+this to rotate the password of a seeded account. If demo data was ever loaded on a deployment:
+
+- **Rotate** every seeded account you keep: `php backend/bin/create_admin.php admin@nummo.com`
+  (for `amina@…` / `tarik@…`, an admin can also set a new password on the Users page).
+- **Remove** the others: on the Users page click **Close account**. Closing keeps their payment
+  history but blocks login immediately, including tokens that were already issued.
 
 <details>
 <summary><b>Running the production image locally</b></summary>

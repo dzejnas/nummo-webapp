@@ -1,4 +1,4 @@
-// Users (admin page): add, edit (role, balance, currency), delete
+// Users (admin page): add, edit (role, balance, currency), close account
 Pages.users = {
   users: [],
 
@@ -15,16 +15,19 @@ Pages.users = {
     const me = Auth.getUser();
     try {
       this.users = await UserService.getAll();
-      body.innerHTML = this.users.map(u => `<tr>
+      // Closed accounts stay in the list (their payment history is kept) but cannot be changed
+      body.innerHTML = this.users.map(u => `<tr class="${u.closed_at ? 'text-muted' : ''}">
           <td>${u.id}</td>
           <td>${UI.escape(u.name)}</td>
           <td>${UI.escape(u.email)}</td>
           <td>${UI.badge(u.role)}</td>
+          <td>${u.closed_at ? UI.badge('closed') + ` <span class="small">${UI.date(u.closed_at)}</span>` : UI.badge('active')}</td>
           <td>${UI.escape(u.currency)}</td>
           <td class="text-end">${UI.money(u.balance)}</td>
-          <td class="text-end text-nowrap">
+          <td class="text-end text-nowrap">${u.closed_at ? '' : `
             <button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${u.id}" title="Edit"><i class="bi bi-pencil"></i></button>
-            ${u.id !== me.id ? `<button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${u.id}" title="Delete"><i class="bi bi-trash"></i></button>` : ''}
+            ${u.id !== me.id ? `<button class="btn btn-sm btn-outline-danger" data-action="close" data-id="${u.id}" title="Close account"
+              aria-label="Close account of ${UI.escape(u.name)}"><i class="bi bi-person-x"></i></button>` : ''}`}
           </td>
         </tr>`).join('');
     } catch (error) {
@@ -78,10 +81,12 @@ Pages.users = {
       this.openForm(user);
       return;
     }
-    if (!confirm(`Delete ${user.name}? Their contacts, payments and requests are deleted too.`)) return;
+    if (!confirm(`Close ${user.name}'s account? They can no longer log in, send or receive money. `
+      + 'Their contacts are removed and open payments and requests are cancelled. '
+      + 'Completed payments stay in the history. This cannot be undone in the app.')) return;
     try {
       await UserService.remove(user.id);
-      UI.toast('User deleted');
+      UI.toast('Account closed');
       this.load();
     } catch (error) {
       UI.error(error);

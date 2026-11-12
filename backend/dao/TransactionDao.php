@@ -3,8 +3,9 @@ require_once __DIR__ . '/BaseDao.php';
 
 class TransactionDao extends BaseDao
 {
-    // Transaction row + readable names of sender, receiver, merchant and category
+    // Transaction row + receipt reference + readable names of sender, receiver, merchant and category
     private const SELECT = "SELECT t.*,
+                                   CONCAT('NUM-', LPAD(t.id, 8, '0')) AS reference,
                                    s.name AS sender_name,
                                    r.name AS receiver_name,
                                    m.name AS merchant_name,
@@ -25,6 +26,13 @@ class TransactionDao extends BaseDao
     public function getById(int $id): ?array
     {
         return $this->queryOne(self::SELECT . " WHERE t.id = :id", ['id' => $id]);
+    }
+
+    // Reads the row and locks it until the DB transaction ends, so two requests cannot
+    // both see "pending" and both settle it
+    public function getByIdForUpdate(int $id): ?array
+    {
+        return $this->queryOne("SELECT * FROM transactions WHERE id = :id FOR UPDATE", ['id' => $id]);
     }
 
     // All transactions, optionally filtered. Pass $userId to get only that user's transactions.

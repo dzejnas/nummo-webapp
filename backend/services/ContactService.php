@@ -44,8 +44,12 @@ class ContactService extends BaseService
         if ($userId === $friendUserId) {
             throw new ApiException('You cannot add yourself as a contact');
         }
-        if ($users->getById($userId) === null || $users->getById($friendUserId) === null) {
+        $friend = $users->getById($friendUserId);
+        if ($users->getById($userId) === null || $friend === null) {
             throw new ApiException('User does not exist');
+        }
+        if ($friend['closed_at'] !== null) {
+            throw new ApiException('This account is closed', 409);
         }
         if ($this->dao->getByUsers($userId, $friendUserId) !== null) {
             throw new ApiException('This contact already exists', 409);

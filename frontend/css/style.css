@@ -61,3 +61,26 @@ main {
   position: relative;
   height: 260px;
 }
+
+/* Receipt dialog */
+.receipt-amount {
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+}
+
+.receipt-details dt {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.receipt-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

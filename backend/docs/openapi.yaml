@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Nummo API
-  version: 4.0.0
+  version: 5.0.0
   description: |
     REST API for Nummo, a peer-to-peer payments app.
 
@@ -13,8 +13,13 @@ info:
     everything and manage users, merchants and categories.
 
     All amounts are in EUR. Errors are returned as `{"error": "message"}` with a matching HTTP status.
+
+    **Reliable payments (v2):** balances change atomically, so concurrent payments can never overdraw an
+    account. Send an optional `Idempotency-Key` header with `POST /api/transactions`: a retry with the same
+    key and body returns the first payment (200) instead of paying again. Every transaction has a
+    `reference` (e.g. `NUM-00000042`) used on receipts. All balances are simulated demo money.
 servers:
-- url: /
+- url: "/"
   description: The server this page is served from
 security:
 - bearerAuth: []
@@ -73,7 +78,7 @@ paths:
               schema:
                 "$ref": "#/components/schemas/AuthResult"
         '401':
-          description: Wrong email or password
+          description: Wrong email or password, or the account has been closed
           content:
             application/json:
               schema:
@@ -235,10 +240,18 @@ paths:
     delete:
       tags:
       - Users
-      summary: Delete a user
+      summary: Close a user account (payment history is kept)
       responses:
         '200':
-          "$ref": "#/components/responses/Deleted"
+          description: Account closed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User account closed
         '404':
           "$ref": "#/components/responses/NotFound"
         '401':
@@ -246,12 +259,17 @@ paths:
         '403':
           "$ref": "#/components/responses/Forbidden"
         '409':
-          description: Admins cannot delete their own account
+          description: You cannot close your own account
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
-      description: "**Admins only.**"
+              example:
+                error: You cannot close your own account
+      description: |-
+        **Admins only.**
+
+        The user can no longer log in (existing tokens stop working), send, receive or be added as a contact. Their contacts are removed, pending payments become `failed` and pending requests `declined`. Completed payments, paid requests and the balance are kept. Admins cannot close their own account (409).
   "/api/users/{id}/spending":
     parameters:
     - "$ref": "#/components/parameters/Id"
@@ -643,6 +661,7 @@ paths:
         Set **either** `receiver_id` or `merchant_id`. A completed payment moves money right away:
         the sender's balance goes down and the receiver's goes up. The sender needs enough balance.
         For normal users the sender is always the logged-in user.
+        Closed accounts cannot send or receive (409).
       requestBody:
         required: true
         content:
@@ -650,6 +669,12 @@ paths:
             schema:
               "$ref": "#/components/schemas/TransactionCreate"
       responses:
+        '200':
+          description: 'Replay: a payment with this Idempotency-Key and the same body already exists; it is returned and nothing is charged again'
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Transaction"
         '201':
           description: Created transaction
           content:
@@ -662,13 +687,31 @@ paths:
           "$ref": "#/components/responses/Unauthorized"
         '403':
           "$ref": "#/components/responses/Forbidden"
+        '409':
+          description: Idempotency-Key reused for a different payment, an account is closed, or the server was busy (retry)
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+              example:
+                error: This Idempotency-Key was already used for a different payment
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Optional, 8–100 characters, unique per payment (e.g. a UUID). Scoped to the logged-in user. Reuse the same key only when retrying the same payment after an unknown outcome.
+        schema:
+          type: string
+          minLength: 8
+          maxLength: 100
+          example: 3f6c1a9e-6c0e-4c55-9e8a-2b8f0f4d7a11
   "/api/transactions/{id}":
     parameters:
     - "$ref": "#/components/parameters/Id"
     get:
       tags:
       - Transactions
-      summary: Get one transaction
+      summary: Get one transaction (also used for receipts)
       responses:
         '200':
           description: The transaction
@@ -682,6 +725,7 @@ paths:
           "$ref": "#/components/responses/Unauthorized"
         '403':
           "$ref": "#/components/responses/Forbidden"
+      description: Only the sender, the receiver or an admin can open it (403 otherwise).
     put:
       tags:
       - Transactions
@@ -796,6 +840,7 @@ paths:
         `{"status": "paid"}` creates a completed transaction from the payer to the requester.
         If the payer does not have enough balance, nothing is saved (400).
         Only the payer can pay or decline; only the requester can change amount or note.
+        Paying an already paid request again returns it unchanged with its `transaction_id` (a safe retry, no second debit).
       requestBody:
         required: true
         content:
@@ -822,7 +867,7 @@ paths:
     delete:
       tags:
       - Payment requests
-      summary: Delete a payment request
+      summary: Delete a pending or declined payment request
       responses:
         '200':
           "$ref": "#/components/responses/Deleted"
@@ -832,6 +877,14 @@ paths:
           "$ref": "#/components/responses/Unauthorized"
         '403':
           "$ref": "#/components/responses/Forbidden"
+        '409':
+          description: Paid requests are kept as a record
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+              example:
+                error: Paid requests cannot be deleted
   "/api/rates":
     get:
       tags:
@@ -1022,6 +1075,7 @@ components:
         balance:
           type: string
           example: '250.00'
+          description: Simulated demo money (EUR)
         currency:
           type: string
           example: EUR
@@ -1029,6 +1083,11 @@ components:
         created_at:
           type: string
           example: '2026-11-02 14:05:12'
+        closed_at:
+          type: string
+          nullable: true
+          example: 
+          description: Set when an admin closed the account
     UserCreate:
       type: object
       required:
@@ -1198,6 +1257,10 @@ components:
         id:
           type: integer
           example: 1
+        reference:
+          type: string
+          example: NUM-00000042
+          description: Receipt reference
         sender_id:
           type: integer
           example: 2
@@ -1325,6 +1388,11 @@ components:
           - declined
         created_at:
           type: string
+        transaction_id:
+          type: integer
+          nullable: true
+          example: 42
+          description: The payment that settled this request. Null while unpaid, and for requests paid before v2 (no verified link).
     PaymentRequestCreate:
       type: object
       required:

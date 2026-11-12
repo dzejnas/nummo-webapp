@@ -56,7 +56,11 @@ const TransactionService = {
     const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== ''));
     return Api.get('/transactions' + (query.toString() ? '?' + query : ''));
   },
-  create(data)       { return Api.post('/transactions', data); },
+  get(id)            { return Api.get('/transactions/' + id); },
+  // The same idempotencyKey on a retry returns the first payment instead of paying twice
+  create(data, idempotencyKey) {
+    return Api.request('POST', '/transactions', data, { 'Idempotency-Key': idempotencyKey });
+  },
   update(id, data)   { return Api.put('/transactions/' + id, data); },
   remove(id)         { return Api.delete('/transactions/' + id); },
 };

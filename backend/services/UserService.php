@@ -30,7 +30,9 @@ class UserService extends BaseService
     // Only the fields that are sent are changed
     public function update(int $id, array $data): array
     {
-        $this->getById($id);
+        if ($this->getById($id)['closed_at'] !== null) {
+            throw new ApiException('This account is closed', 409);
+        }
         $changes = [];
 
         if (isset($data['name'])) {
@@ -57,6 +59,32 @@ class UserService extends BaseService
         return $this->getById($id);
     }
 
+    // Admins close accounts instead of deleting them, so completed payments keep both sides.
+    // A closed user cannot log in (existing tokens stop working), send, receive or be added as a
+    // contact. Their contacts are removed, their pending payments become "failed" and their pending
+    // requests "declined". Completed payments, paid requests and the frozen balance stay as records.
+    public function close(int $id, array $admin): void
+    {
+        if ($id === $admin['id']) {
+            throw new ApiException('You cannot close your own account', 409);
+        }
+        $this->dao->beginTransaction();
+        try {
+            // Locking the user row waits for any payment that has already locked it to finish
+            $account = $this->dao->lockForUpdate([$id])[0] ?? null;
+            if ($account === null) {
+                throw new ApiException('User not found', 404);
+            }
+            if ($account['closed_at'] === null) {
+                $this->dao->close($id);
+            }
+            $this->dao->commit();
+        } catch (Throwable $e) {
+            $this->dao->rollBack();
+            throw $e;
+        }
+    }
+
     // A user editing their own profile cannot change their role or balance
     public function updateProfile(int $id, array $data): array
     {
@@ -72,11 +100,8 @@ class UserService extends BaseService
         }
     }
 
-    private function balance(array $data): float
+    private function balance(array $data): string
     {
-        if (!is_numeric($data['balance']) || $data['balance'] < 0) {
-            throw new ApiException('balance must be 0 or more');
-        }
-        return round((float) $data['balance'], 2);
+        return Validator::amount($data, 'balance', true);
     }
 }

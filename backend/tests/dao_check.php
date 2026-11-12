@@ -41,8 +41,10 @@ try {
     check('getByEmail returns hash', password_verify('secret123', $users->getByEmail($email)['password']));
     $users->update($userId, ['name' => 'Renamed', 'not_a_column' => 'ignored']);
     check('update', $users->getById($userId)['name'] === 'Renamed');
-    $users->changeBalance($userId, 25.5);
-    check('changeBalance', (float) $users->getById($userId)['balance'] === 25.5);
+    $users->credit($userId, '25.50');
+    check('credit', $users->getById($userId)['balance'] === '25.50');
+    check('debit refuses more than the balance', !$users->debit($userId, '25.51'));
+    check('debit', $users->debit($userId, '0.50') && $users->getById($userId)['balance'] === '25.00');
     check('getAll', count($users->getAll()) >= 4);
 
     echo "categories\n";

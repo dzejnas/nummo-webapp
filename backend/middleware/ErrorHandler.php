@@ -24,6 +24,13 @@ class ErrorHandler
             return;
         }
 
+        // Deadlock (1213) or lock wait timeout (1205): nothing was saved, the client may retry
+        if ($e instanceof PDOException && in_array($e->errorInfo[1] ?? null, [1213, 1205], true)) {
+            Logger::error("{$request->method} {$request->url} 409 $who database busy: {$e->getMessage()}");
+            Flight::jsonHalt(['error' => 'The server was busy with another payment. Please try again.'], 409);
+            return;
+        }
+
         Logger::error(sprintf('%s %s 500 %s %s: %s (%s:%d)',
             $request->method, $request->url, $who,
             get_class($e), $e->getMessage(), basename($e->getFile()), $e->getLine()));

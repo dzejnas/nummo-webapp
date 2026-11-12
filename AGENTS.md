@@ -32,7 +32,8 @@ backend/
   logs/         info.log, error.log (not committed)
   docs/         openapi.yaml
   public/       index.php (front controller), docs/ (Swagger UI)
-  tests/        Simple CLI scripts that check the DAO/service layers
+  bin/          create_admin.php (create an admin / rotate a password)
+  tests/        dao_check.php, payments_check.php + race_worker.php (races against real MySQL)
 frontend/
   index.html    SPA shell (navbar + <main id="app">)
   js/api.js     the only code that calls fetch(); adds the JWT, handles 401
@@ -40,7 +41,7 @@ frontend/
   js/pages/     one controller per view (Pages.<name>.init())
   js/router.js  hash router with guards (access: guest | user | admin)
   views/        HTML templates   css/   assets/
-sql/            nummo_db.sql — schema + sample data
+sql/            schema.sql (schema only), demo_seed.sql (opt-in demo data), migrations/ (+ .rollback.sql)
 docs/           ERD, AI_LOG.md
 Dockerfile      production image (Apache + PHP): frontend at /, API at /api, Swagger at /docs/
 deploy/         apache.conf, api.php (entry for /api), start.sh (uses $PORT)
@@ -72,8 +73,18 @@ deploy/         apache.conf, api.php (entry for /api), start.sh (uses $PORT)
    Frontend MVC: views are HTML only; controllers in `js/pages/` never call `fetch()` or `Api`
    directly — they use the service objects in `js/services/`.
    Every form calls `Validation.check(form)` before sending; the backend validates again.
-7. Money is stored as `DECIMAL(12,2)` in EUR. Balances only change inside a DB transaction
-   (`TransactionService::record()` expects the caller to have started one).
+7. Money is stored as `DECIMAL(12,2)` in EUR and handled as exact decimal strings
+   (`Validator::amount()` returns e.g. `"12.50"`); never use floats for money.
+   Balances only change inside a DB transaction (`TransactionService::record()` expects the caller
+   to have started one). Lock order: the row being changed (`getByIdForUpdate`), then users via
+   `UserDao::lockForUpdate()` (sorted by id). Debits use `UserDao::debit()` (conditional UPDATE).
+   Read state you are about to change only from a locked row, inside the transaction.
+   Never throw after `commit()` inside a `try` whose `catch` calls `rollBack()`.
+9. `POST /api/transactions` supports `Idempotency-Key` (table `idempotency_keys`, scoped to the
+   logged-in user). Users are closed (`closed_at`), never deleted; history uses `ON DELETE RESTRICT`.
+   Schema changes go in a new numbered file in `sql/migrations/` with a matching rollback, and
+   `sql/schema.sql` is updated to the same result. Run `php backend/tests/payments_check.php`
+   after any change to payments.
 8. External API calls go through `ExchangeRateService` only: always with a timeout, and every
    failure is logged with `Logger::error()` and returned as a friendly 503.
 

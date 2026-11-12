@@ -13,6 +13,10 @@ class Settings
         if (self::$values === null) {
             $file = __DIR__ . '/config.php';
             self::$values = file_exists($file) ? require $file : self::fromEnvironment();
+            // backend/tests run against a throwaway database (never the real one)
+            if (getenv('NUMMO_TEST_DB')) {
+                self::$values['db']['name'] = getenv('NUMMO_TEST_DB');
+            }
         }
         return self::$values[$key] ?? null;
     }
